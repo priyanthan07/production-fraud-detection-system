@@ -1,0 +1,58 @@
+# Columns to drop before training
+# These are identifiers, targets, or replaced by engineered features
+
+drop_columns:
+  - TransactionID
+  - isFraud
+  - TransactionDT
+  - ProductCD
+  - card4
+  - card6
+  - P_emaildomain
+  - R_emaildomain
+  - M1
+  - M2
+  - M3
+  - M4
+  - M5
+  - M6
+  - M7
+  - M8
+  - M9
+  - id_12
+  - id_15
+  - id_16
+  - id_28
+  - id_29
+  - id_30
+  - id_31
+  - id_33
+  - id_34
+  - id_35
+  - id_36
+  - id_37
+  - id_38
+  - DeviceType
+  - DeviceInfo
+
+# Drop V columns with null rate above this threshold
+null_threshold: 0.90
+
+train_ratio: 0.80
+target_col: isFraud
+
+# Minimum samples required to keep a feature column
+min_samples: 1000
+
+# MLflow experiment name
+mlflow_experiment_name: fraud_detection
+
+# MLflow model registry name
+mlflow_model_name: fraud_detection_model
+
+# Processed features path
+processed_train_path: data/processed/train_features.parquet
+processed_test_path: data/processed/test_features.parquet
+encodings_path: data/processed/encodings.pkl
+
+mlflow_tracking_uri: "postgresql://postgres:admin@localhost:5432/mlflow_tracking"

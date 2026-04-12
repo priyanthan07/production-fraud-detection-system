@@ -207,3 +207,7 @@ marimo/_lsp/
 __marimo__/
 
 /data/validation_reports/
+mlruns/
+mlflow.db
+
+catboost_info/

@@ -5,11 +5,21 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "catboost>=1.2.10",
     "dvc>=3.67.1",
+    "lightgbm>=4.6.0",
+    "mlflow>=1.27.0",
     "numpy>=2.4.4",
+    "optuna>=4.8.0",
     "pandas>=3.0.2",
+    "protobuf>=3.20.0,<4.0.0",
+    "psycopg2-binary>=2.9.11",
+    "pyarrow>=23.0.1",
     "pytest>=9.0.2",
     "scikit-learn>=1.8.0",
+    "setuptools>=82.0.1",
+    "sqlalchemy==1.4.46",
+    "xgboost>=3.2.0",
 ]
 
 [tool.pytest.ini_options]
