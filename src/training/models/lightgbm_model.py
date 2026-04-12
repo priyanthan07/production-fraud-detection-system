@@ -35,6 +35,7 @@ def build_lightgbm_model(
         "subsample": 0.8,
         "colsample_bytree": 0.8,
         "min_child_samples": 20,
+        "is_unbalance" : True,
         "random_state": 42,
         "n_jobs": -1,
         "verbose": -1,

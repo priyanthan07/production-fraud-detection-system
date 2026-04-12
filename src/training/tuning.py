@@ -36,7 +36,7 @@ def tune_xgboost(
         params = {
             "n_estimators" : trial.suggest_int("n_estimators", 100, 1000),
             "max_depth" : trial.suggest_int("max_depth", 3, 9),
-            "learning_rate" : trial.suggest_int("learning_rate", 0.01, 0.3, log=True),
+            "learning_rate" : trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
             "subsample": trial.suggest_float("subsample", 0.6, 1.0),
             "colsample_bytree": trial.suggest_float("colsample_bytree", 0.6, 1.0),
             "min_child_weight": trial.suggest_int("min_child_weight", 5, 50),

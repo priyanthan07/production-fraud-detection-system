@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def build_xgboost_model(
     X_train : pd.DataFrame,
-    Y_train : pd.DataFrame,
+    y_train : pd.DataFrame,
     params : dict = None,
 ) -> XGBClassifier:
     """
@@ -25,8 +25,8 @@ def build_xgboost_model(
     # This is the ratio of negative to positive examples
     # Tells XGBoost to weight fraud cases more heavily
     
-    n_negative = (Y_train == 0).sum()
-    n_positive = (Y_train == 1).sum()
+    n_negative = (y_train == 0).sum()
+    n_positive = (y_train == 1).sum()
     scale_pos_weight = n_negative / n_positive
     
     logger.info(f"Class distribution: {n_negative} legitimate, {n_positive} fraud")
