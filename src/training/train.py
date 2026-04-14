@@ -26,6 +26,7 @@ from src.training.models.lightgbm_model import train_lightgbm
 from src.training.models.catboost_model import train_catboost
 from src.training.evaluator import evaluate_model
 from src.training.threshold_optimizer import find_optimal_threshold
+from src.explainability.shap_analysis import run_shap_analysis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -250,10 +251,31 @@ def main():
                 registered_model_name=config["mlflow_model_name"],
             )
             
+            # SHAP — runs inside the same MLflow run so plots and
+            # the importance CSV are co-located with the model weights.
+            logger.info(f"Running SHAP analysis for {model_name}...")
+            try:
+                shap_artifacts = run_shap_analysis(
+                    model=model,
+                    model_name=model_name,
+                    X_val=X_val,
+                    y_val=y_val,
+                )
+                logger.info(f"SHAP analysis complete for {model_name}.")
+            except Exception as e:
+                # SHAP failure must never abort the training run.
+                # The model and metrics are already logged above.
+                logger.warning(
+                    f"SHAP analysis failed for {model_name}: {e}. "
+                    f"Continuing without SHAP artifacts."
+                )
+                shap_artifacts = {}
+            
             results[model_name] = {
                 "model": model,
                 "metrics": metrics,
                 "threshold": threshold,
+                "shap_artifacts": shap_artifacts,
             }
             
             logger.info(f"{model_name} results:")
@@ -267,6 +289,12 @@ def main():
     )
     
     best_metrics = results[best_model_name]["metrics"]
+    
+    best_shap = results[best_model_name].get("shap_artifacts", {})
+    importance_df = best_shap.get("importance_df")
+    if importance_df is not None:
+        logger.info(f"Top 10 features by SHAP ({best_model_name}):")
+        logger.info(importance_df.head(10).to_string(index=False))
     
     logger.info(f"\n{'='*50}")
     logger.info(f"Best model: {best_model_name}")
