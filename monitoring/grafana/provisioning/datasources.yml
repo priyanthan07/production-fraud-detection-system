@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+
+    # If running Grafana locally (not in Docker):
+    url: http://localhost:9090
+
+    # If running in Docker with compose:
+    # Ex, url: http://prometheus:9090
+
+    isDefault: true
+    editable: false
+
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: POST

@@ -27,7 +27,7 @@ class FraudPredictor:
     def __init__(self):
         self.model = None
         self.encoding = None
-        self.feature_columnns = None
+        self.feature_columns = None
         self.threshold = 0.5
         self.model_version = None
         self.config = None
@@ -52,7 +52,6 @@ class FraudPredictor:
         mlflow.set_tracking_uri(tracking_uri)
         
         # Load model from MLflow
-        
         if model_uri is None:
             model_uri = f"models:/{MODEL_NAME}/Production"
             
@@ -65,21 +64,7 @@ class FraudPredictor:
         else:
             self.model_version = "local"
             logger.warning("Loading from local path — version info unavailable. Using default threshold 0.5.")
-        
-        # Load encodings
-        if model_uri is None:
-            model_uri = f"models:/{MODEL_NAME}/Production"
-            
-        logger.info(f"Loading model from: {model_uri}")
-        self.model = mlflow.sklearn.load_model(model_uri)
-        logger.info("Model loaded successfully.")
-        
-        if model_uri.startswith("models:/"):
-            self._load_version_and_threshold(model_uri)
-        else:
-            self.model_version = "local"
-            logger.warning("Loading from local path — version info unavailable. Using default threshold 0.5.")
-            
+                  
         # Load encodings
         if not ENCODINGS_PATH.exists():
             raise FileNotFoundError(
@@ -190,17 +175,23 @@ class FraudPredictor:
             Select exactly the columns the model was trained on, in the
             exact same order, handling missing and extra columns.
         """
-        missing_cols = [c for c in self.feature_columnns if c not in df.columns]
+        missing_cols = [c for c in self.feature_columns if c not in df.columns]
         
         if missing_cols:
             logger.debug(
                 f"{len(missing_cols)} feature columns missing from input, filling with NaN: {missing_cols[:5]}..."
             )
-            for col in missing_cols:
-                df[col] = np.nan
+            # Add all missing columns in one operation — avoids fragmentation
+            missing_df = pd.DataFrame(
+                np.nan,
+                index=df.index,
+                columns=missing_cols,
+            )
+            
+            df = pd.concat([df, missing_df], axis=1)
         
         # Select in exact training order  
-        return df[self.feature_columnns]
+        return df[self.feature_columns]
     
     def predict_single(self, transaction: TransactionInput) -> PredictionOutput:
         """ 
@@ -211,12 +202,15 @@ class FraudPredictor:
         
         # Convert to DataFrame
         df = self._transaction_to_dataframe(transaction)
+        print("After transaction_to_dataframe:", df.shape)
         
         # Run feature engineering
         df = self._run_feature_pipeline(df)
+        print("After feature pipeline:", df.shape)
         
         # Select model features in correct order
         X = self._select_model_features(df)
+        print("After select features:", X.shape)
         
         fraud_probability = float(
             self.model.predict_proba(X)[0, 1]
