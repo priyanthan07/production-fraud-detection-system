@@ -144,7 +144,11 @@ def plot_waterfall(
     # the object expected by waterfall_plot (shap >= 0.40 API).
     base = explainer.expected_value
     if isinstance(base, (list, np.ndarray)):
-        base = base[1]
+        if len(base) > 1:
+            base = base[1]
+        else:
+            base = base[0]
+    base = float(base)
 
     explanation = shap.Explanation(
         values=shap_values[row_index],

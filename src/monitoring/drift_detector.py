@@ -267,8 +267,10 @@ class DriftDetector:
         logger.info("=" * 50)
 
         # Load data
-        self.load_baseline()
-        self.load_production_data()
+        if self.baseline_df is None:
+            self.load_baseline()
+        if self.production_df is None:
+            self.load_production_data()
 
         # Check minimum sample size
         min_samples = self.config["min_sample_size"]
