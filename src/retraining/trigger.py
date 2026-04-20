@@ -17,16 +17,17 @@ logging.basicConfig(level=logging.INFO)
 # Path where retraining decisions are logged
 RETRAINING_LOG_PATH = Path("data/drift_reports/retraining_log.csv")
 
+
 def check_drift() -> dict:
     """
-        Run drift detection and return the result.
+    Run drift detection and return the result.
 
-        This is a thin wrapper around DriftDetector.run() that handles
-        the case where drift detection fails (missing data, config errors).
-        In production, a failed drift check should not trigger retraining —
-        it should alert the on-call engineer.
+    This is a thin wrapper around DriftDetector.run() that handles
+    the case where drift detection fails (missing data, config errors).
+    In production, a failed drift check should not trigger retraining —
+    it should alert the on-call engineer.
     """
-    
+
     try:
         detector = DriftDetector()
         result = detector.run()
@@ -41,7 +42,7 @@ def check_drift() -> dict:
             "reason": f"Drift detection failed: {e}",
             "error": str(e),
         }
-        
+
     except Exception as e:
         logger.error(f"Drift detection failed unexpectedly: {e}")
         return {
@@ -51,13 +52,14 @@ def check_drift() -> dict:
             "reason": f"Drift detection error: {e}",
             "error": str(e),
         }
-    
-def run_training_pipeline() -> dict:
-    """ 
-        Execute the full training pipeline as a subprocess.
 
-        We run train.py as a separate process rather than importing
-        and calling main() directly
+
+def run_training_pipeline() -> dict:
+    """
+    Execute the full training pipeline as a subprocess.
+
+    We run train.py as a separate process rather than importing
+    and calling main() directly
     """
     logger.info("=" * 50)
     logger.info("Starting retraining pipeline...")
@@ -103,12 +105,13 @@ def run_training_pipeline() -> dict:
             "success": False,
             "error": str(e),
         }
-        
+
+
 def run_promotion_workflow() -> dict:
-    """ 
-        Run the model promotion workflow after training.
     """
-    
+    Run the model promotion workflow after training.
+    """
+
     logger.info("Running model promotion workflow...")
 
     try:
@@ -137,45 +140,38 @@ def run_promotion_workflow() -> dict:
             "success": False,
             "error": str(e),
         }
-        
+
+
 def log_retraining_event(
     drift_result: dict,
     training_result: dict = None,
     promotion_result: dict = None,
     forced: bool = False,
 ) -> None:
-    """ 
-        Append a record to the retraining log CSV.
+    """
+    Append a record to the retraining log CSV.
     """
     RETRAINING_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    
+
     row = {
         "timestamp": datetime.now().isoformat(),
         "forced": forced,
         "drift_detected": drift_result.get("should_retrain", False),
         "drift_reason": drift_result.get("reason", ""),
-        "drift_fraction": (
-            drift_result.get("summary", {}).get("drift_fraction", None)
-        ),
+        "drift_fraction": (drift_result.get("summary", {}).get("drift_fraction", None)),
         "training_triggered": training_result is not None,
         "training_success": (
-            training_result.get("success", False)
-            if training_result
-            else False
+            training_result.get("success", False) if training_result else False
         ),
         "promotion_triggered": promotion_result is not None,
         "promoted": (
-            promotion_result.get("promoted", False)
-            if promotion_result
-            else False
+            promotion_result.get("promoted", False) if promotion_result else False
         ),
         "new_model_version": (
-            promotion_result.get("version", None)
-            if promotion_result
-            else None
+            promotion_result.get("version", None) if promotion_result else None
         ),
     }
-    
+
     row_df = pd.DataFrame([row])
 
     if RETRAINING_LOG_PATH.exists():
@@ -184,18 +180,19 @@ def log_retraining_event(
 
     row_df.to_csv(RETRAINING_LOG_PATH, index=False)
     logger.info(f"Retraining event logged to {RETRAINING_LOG_PATH}")
-    
-def run(force: bool = False) -> dict:
-    """ 
-        Main entry point for the retraining trigger.
 
-        Steps:
-        1. Run drift detection (unless force=True)
-        2. If drift detected or forced: run training pipeline
-        3. If training succeeds: run promotion workflow
-        4. Log everything
+
+def run(force: bool = False) -> dict:
     """
-    
+    Main entry point for the retraining trigger.
+
+    Steps:
+    1. Run drift detection (unless force=True)
+    2. If drift detected or forced: run training pipeline
+    3. If training succeeds: run promotion workflow
+    4. Log everything
+    """
+
     logger.info("=" * 60)
     logger.info("Retraining Trigger")
     logger.info(f"  Mode: {'FORCED' if force else 'DRIFT-TRIGGERED'}")
@@ -217,7 +214,7 @@ def run(force: bool = False) -> dict:
     # Step 2: Decide whether to retrain
     if not drift_result["should_retrain"]:
         logger.info(f"No retraining needed. Reason: {drift_result['reason']}")
-        
+
         log_retraining_event(drift_result, forced=force)
         return {
             "retrained": False,
@@ -225,16 +222,12 @@ def run(force: bool = False) -> dict:
         }
 
     # Step 3: Run training
-    logger.info(
-        f"Retraining triggered. Reason: {drift_result['reason']}"
-    )
+    logger.info(f"Retraining triggered. Reason: {drift_result['reason']}")
     training_result = run_training_pipeline()
 
     if not training_result["success"]:
         logger.error("Training failed. Aborting promotion.")
-        log_retraining_event(
-            drift_result, training_result, forced=force
-        )
+        log_retraining_event(drift_result, training_result, forced=force)
         return {
             "retrained": False,
             "drift_result": drift_result,
@@ -246,9 +239,7 @@ def run(force: bool = False) -> dict:
     promotion_result = run_promotion_workflow()
 
     # Step 5: Log everything
-    log_retraining_event(
-        drift_result, training_result, promotion_result, forced=force
-    )
+    log_retraining_event(drift_result, training_result, promotion_result, forced=force)
 
     return {
         "retrained": True,
@@ -258,12 +249,10 @@ def run(force: bool = False) -> dict:
         },
         "promotion_result": promotion_result,
     }
-    
+
+
 if __name__ == "__main__":
-    
-    parser = argparse.ArgumentParser(
-        description="Check drift and retrain if needed"
-    )
+    parser = argparse.ArgumentParser(description="Check drift and retrain if needed")
     parser.add_argument(
         "--force",
         action="store_true",
@@ -285,4 +274,3 @@ if __name__ == "__main__":
     else:
         reason = result.get("drift_result", {}).get("reason", "")
         print(f"  Reason:    {reason}")
-        

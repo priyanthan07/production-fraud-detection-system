@@ -66,6 +66,7 @@ ACTIVE_REQUESTS = Gauge(
     labelnames=["endpoint"],
 )
 
+
 def record_prediction(
     endpoint: str,
     status_code: int,
@@ -74,25 +75,26 @@ def record_prediction(
     is_fraud: bool,
     risk_level: str,
 ) -> None:
-    """ 
-        Record all metrics for a single prediction request.
     """
-    
+    Record all metrics for a single prediction request.
+    """
+
     status_str = str(status_code)
-    
+
     # Increment request counter
     REQUEST_COUNT.labels(endpoint=endpoint, status=status_str).inc()
-    
+
     # Record latency
     REQUEST_LATENCY.labels(endpoint=endpoint).observe(latency_seconds)
-    
+
     # Record score in distribution histogram
     SCORE_DISTRIBUTION.labels(endpoint=endpoint).observe(fraud_probability)
- 
+
     # If fraud was detected, increment fraud counter
     if is_fraud:
         FRAUD_DETECTIONS.labels(endpoint=endpoint, risk_level=risk_level).inc()
-        
+
+
 def record_batch_prediction(
     batch_size: int,
     endpoint: str,
@@ -102,37 +104,37 @@ def record_batch_prediction(
     fraud_flags: list,
     risk_levels: list,
 ) -> None:
-    """ 
-        Record all metrics for a batch prediction request.
+    """
+    Record all metrics for a batch prediction request.
     """
     status_str = str(status_code)
-    
+
     # Request-level metrics
     REQUEST_COUNT.labels(endpoint=endpoint, status=status_str).inc()
     REQUEST_LATENCY.labels(endpoint=endpoint).observe(latency_seconds)
     BATCH_SIZE.observe(batch_size)
-    
+
     for prob, flagged, risk in zip(fraud_probabilities, fraud_flags, risk_levels):
         SCORE_DISTRIBUTION.labels(endpoint=endpoint).observe(prob)
         if flagged:
             FRAUD_DETECTIONS.labels(endpoint=endpoint, risk_level=risk).inc()
-            
+
+
 def record_error(endpoint: str, error_type: str) -> None:
     """
-        Record a prediction error.
+    Record a prediction error.
     """
     ERROR_COUNT.labels(endpoint=endpoint, error_type=error_type).inc()
     logger.warning(f"Error recorded: endpoint={endpoint} type={error_type}")
-    
+
+
 def set_model_version(version: str) -> None:
-    """ 
-        Update the model version gauge.
+    """
+    Update the model version gauge.
     """
     try:
         MODEL_VERSION.set(float(version))
         logger.info(f"Model version gauge set to {version}")
     except (ValueError, TypeError):
         MODEL_VERSION.set(-1)
-        logger.warning(
-            f"Non-numeric model version '{version}'. Setting gauge to -1.")
-        
+        logger.warning(f"Non-numeric model version '{version}'. Setting gauge to -1.")

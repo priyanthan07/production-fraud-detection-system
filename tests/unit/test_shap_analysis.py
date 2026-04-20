@@ -21,6 +21,7 @@ from src.explainability.shap_analysis import (
 # Fixtures
 # ----------------------------------------------------------------
 
+
 def make_sample_data(n=200, n_features=10, fraud_rate=0.1):
     np.random.seed(42)
     X = pd.DataFrame(
@@ -32,9 +33,7 @@ def make_sample_data(n=200, n_features=10, fraud_rate=0.1):
 
 
 def make_trained_model(X, y):
-    model = GradientBoostingClassifier(
-        n_estimators=10, max_depth=3, random_state=42
-    )
+    model = GradientBoostingClassifier(n_estimators=10, max_depth=3, random_state=42)
     model.fit(X, y)
     return model
 
@@ -49,6 +48,7 @@ def sample_model_and_data():
 # ----------------------------------------------------------------
 # compute_shap_values
 # ----------------------------------------------------------------
+
 
 def test_compute_shap_values_returns_tuple(sample_model_and_data):
     model, X, y = sample_model_and_data
@@ -77,6 +77,7 @@ def test_shap_values_not_all_zero(sample_model_and_data):
 # ----------------------------------------------------------------
 # build_shap_feature_importance
 # ----------------------------------------------------------------
+
 
 def test_importance_df_columns():
     shap_values = np.random.randn(100, 5)
@@ -112,6 +113,7 @@ def test_importance_values_non_negative():
 # plot_summary_beeswarm
 # ----------------------------------------------------------------
 
+
 def test_beeswarm_creates_file(sample_model_and_data):
     model, X, y = sample_model_and_data
     _, shap_values = compute_shap_values(model, X, "test_model")
@@ -125,6 +127,7 @@ def test_beeswarm_creates_file(sample_model_and_data):
 # ----------------------------------------------------------------
 # plot_summary_bar
 # ----------------------------------------------------------------
+
 
 def test_bar_creates_file(sample_model_and_data):
     model, X, y = sample_model_and_data
@@ -140,15 +143,20 @@ def test_bar_creates_file(sample_model_and_data):
 # plot_waterfall
 # ----------------------------------------------------------------
 
+
 def test_waterfall_creates_file(sample_model_and_data):
     model, X, y = sample_model_and_data
     explainer, shap_values = compute_shap_values(model, X, "test_model")
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "waterfall.png")
         result = plot_waterfall(
-            explainer, shap_values, X,
-            row_index=0, model_name="test_model",
-            label="fraud_0", output_path=path,
+            explainer,
+            shap_values,
+            X,
+            row_index=0,
+            model_name="test_model",
+            label="fraud_0",
+            output_path=path,
         )
         assert os.path.exists(result)
         assert os.path.getsize(result) > 0
@@ -161,9 +169,13 @@ def test_waterfall_works_for_different_row_indices(sample_model_and_data):
         for row_idx in [0, 1, len(X) - 1]:
             path = os.path.join(tmpdir, f"waterfall_{row_idx}.png")
             plot_waterfall(
-                explainer, shap_values, X,
-                row_index=row_idx, model_name="test_model",
-                label=f"row_{row_idx}", output_path=path,
+                explainer,
+                shap_values,
+                X,
+                row_index=row_idx,
+                model_name="test_model",
+                label=f"row_{row_idx}",
+                output_path=path,
             )
             assert os.path.exists(path)
 
@@ -172,14 +184,20 @@ def test_waterfall_works_for_different_row_indices(sample_model_and_data):
 # run_shap_analysis (MLflow mocked)
 # ----------------------------------------------------------------
 
+
 @patch("src.explainability.shap_analysis.mlflow")
 def test_run_shap_analysis_returns_expected_keys(mock_mlflow, sample_model_and_data):
     model, X, y = sample_model_and_data
     mock_mlflow.log_artifact = MagicMock()
     mock_mlflow.log_metric = MagicMock()
     result = run_shap_analysis(model, "test_model", X, y)
-    assert {"beeswarm", "bar", "waterfall_plots",
-            "importance_csv", "importance_df"}.issubset(result)
+    assert {
+        "beeswarm",
+        "bar",
+        "waterfall_plots",
+        "importance_csv",
+        "importance_df",
+    }.issubset(result)
 
 
 @patch("src.explainability.shap_analysis.mlflow")
@@ -200,8 +218,7 @@ def test_run_shap_analysis_logs_top10_metrics(mock_mlflow):
     model = make_trained_model(X, y)
     run_shap_analysis(model, "test_model", X, y)
     metric_calls = [
-        c for c in mock_mlflow.log_metric.call_args_list
-        if "shap_importance" in str(c)
+        c for c in mock_mlflow.log_metric.call_args_list if "shap_importance" in str(c)
     ]
     assert len(metric_calls) == 10
 

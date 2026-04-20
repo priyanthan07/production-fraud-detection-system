@@ -27,11 +27,12 @@ from src.monitoring.metrics_exporter import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Lifespan — startup and shutdown logic
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Runs on server startup and shutdown."""
-    
+
     logger.info("Starting fraud detection inference server...")
     try:
         predictor.load()
@@ -44,7 +45,8 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown logic would go here if needed
     logger.info("Inference server shutting down.")
-    
+
+
 app = FastAPI(
     title="Fraud Detection API",
     description=(
@@ -53,6 +55,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
 
 @app.get(
     "/health",
@@ -67,7 +70,8 @@ async def health_check():
         model_version=str(predictor.model_version or "none"),
         threshold=predictor.threshold,
     )
-    
+
+
 @app.get(
     "/metrics",
     tags=["Monitoring"],
@@ -76,15 +80,15 @@ async def health_check():
 )
 async def metrics():
     """
-        Expose all Prometheus metrics in text format.
-        Scraped by Prometheus every 15 seconds as configured in prometheus.yml.
-        Do not expose this endpoint publicly in production.
+    Expose all Prometheus metrics in text format.
+    Scraped by Prometheus every 15 seconds as configured in prometheus.yml.
+    Do not expose this endpoint publicly in production.
     """
     return Response(
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,
     )
-    
+
 
 @app.post(
     "/predict",
@@ -98,12 +102,12 @@ async def metrics():
     },
 )
 async def predict_single(transaction: TransactionInput):
-    """ 
-        Score a single transaction and return a fraud probability.
     """
-    
+    Score a single transaction and return a fraud probability.
+    """
+
     endpoint = "/predict"
-    
+
     if not predictor._loaded:
         record_error(endpoint, "model_not_loaded")
         raise HTTPException(
@@ -113,18 +117,18 @@ async def predict_single(transaction: TransactionInput):
                 "Try again in a few seconds."
             ),
         )
-        
+
     ACTIVE_REQUESTS.labels(endpoint=endpoint).inc()
-    
+
     start_time = time.time()
-    
+
     try:
         result = predictor.predict_single(transaction)
     except Exception as e:
         latency = time.time() - start_time
         ACTIVE_REQUESTS.labels(endpoint=endpoint).dec()
         record_error(endpoint, "prediction_error")
-        
+
         record_prediction(
             endpoint=endpoint,
             status_code=500,
@@ -133,7 +137,7 @@ async def predict_single(transaction: TransactionInput):
             is_fraud=False,
             risk_level="LOW",
         )
-        
+
         logger.error(
             f"Prediction failed for TransactionID {transaction.TransactionID}: {e}"
         )
@@ -141,10 +145,10 @@ async def predict_single(transaction: TransactionInput):
             status_code=500,
             detail=f"Prediction failed: {str(e)}",
         )
-    
+
     latency = time.time() - start_time
     ACTIVE_REQUESTS.labels(endpoint=endpoint).dec()
-    
+
     record_prediction(
         endpoint=endpoint,
         status_code=200,
@@ -153,13 +157,14 @@ async def predict_single(transaction: TransactionInput):
         is_fraud=result.is_fraud,
         risk_level=result.risk_level,
     )
- 
+
     logger.info(
         f"TransactionID={transaction.TransactionID} fraud_probability={result.fraud_probability:.4f} "
-        f"is_fraud={result.is_fraud} latency={latency*1000:.1f}ms"
+        f"is_fraud={result.is_fraud} latency={latency * 1000:.1f}ms"
     )
-    
+
     return result
+
 
 @app.post(
     "/predict/batch",
@@ -174,38 +179,38 @@ async def predict_single(transaction: TransactionInput):
 )
 async def predict_batch(batch: BatchTransactionInput):
     """
-        Score a batch of transactions in a single request.
+    Score a batch of transactions in a single request.
     """
-    
+
     endpoint = "/predict/batch"
-    
+
     if not predictor._loaded:
         record_error(endpoint, "model_not_loaded")
         raise HTTPException(status_code=503, detail="Model is not loaded.")
-    
+
     ACTIVE_REQUESTS.labels(endpoint=endpoint).inc()
-    
+
     start_time = time.time()
     n = len(batch.transactions)
-    
+
     try:
         predictions = predictor.predict_batch(batch.transactions)
     except Exception as e:
         latency = time.time() - start_time
         ACTIVE_REQUESTS.labels(endpoint=endpoint).dec()
         record_error(endpoint, "prediction_error")
-        
+
         logger.error(f"Batch prediction failed: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Batch prediction failed: {str(e)}",
         )
- 
+
     flagged = sum(1 for p in predictions if p.is_fraud)
-    
+
     latency = time.time() - start_time
     ACTIVE_REQUESTS.labels(endpoint=endpoint).dec()
- 
+
     record_batch_prediction(
         batch_size=n,
         endpoint=endpoint,
@@ -215,11 +220,11 @@ async def predict_batch(batch: BatchTransactionInput):
         fraud_flags=[p.is_fraud for p in predictions],
         risk_levels=[p.risk_level for p in predictions],
     )
- 
+
     logger.info(
-        f"Batch scored {n} transactions in {latency*1000:.1f}ms. Flagged {flagged} as fraud ({flagged/n*100:.1f}%)."
+        f"Batch scored {n} transactions in {latency * 1000:.1f}ms. Flagged {flagged} as fraud ({flagged / n * 100:.1f}%)."
     )
- 
+
     return BatchPredictionOutput(
         predictions=predictions,
         total_transactions=n,
@@ -227,9 +232,9 @@ async def predict_batch(batch: BatchTransactionInput):
         fraud_rate_in_batch=round(flagged / n, 4),
         model_version=str(predictor.model_version),
     )
-    
-if __name__ == "__main__":
 
+
+if __name__ == "__main__":
     uvicorn.run(
         "src.inference.app:app",
         host="0.0.0.0",

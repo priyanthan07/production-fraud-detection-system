@@ -27,6 +27,7 @@ from fastapi.testclient import TestClient
 # Fixtures — minimal valid transaction data
 # ----------------------------------------------------------------
 
+
 def make_minimal_transaction() -> dict:
     """
     Minimum required fields for a valid prediction request.
@@ -103,6 +104,7 @@ def make_batch_transactions(n: int = 5) -> list:
 # controlled predict_proba outputs so tests are deterministic.
 # ----------------------------------------------------------------
 
+
 def make_mock_predictor(fraud_prob: float = 0.15):
     """
     Create a mock predictor that returns a fixed fraud probability
@@ -128,22 +130,24 @@ def make_mock_predictor(fraud_prob: float = 0.15):
 
 from src.inference.schemas import PredictionOutput
 
+
 @pytest.fixture
 def client_low_risk():
     """TestClient where predictor returns a low fraud probability."""
     from src.inference.app import app
+
     with patch("src.inference.app.predictor") as mock_pred:
         mock_pred._loaded = True
         mock_pred.model_version = "test_v1"
         mock_pred.threshold = 0.5
-        
+
         mock_pred.predict_single.return_value = PredictionOutput(
             TransactionID=9999999,
             fraud_probability=0.12,
             is_fraud=False,
             risk_level="LOW",
             threshold_used=0.5,
-            model_version="test_v1"
+            model_version="test_v1",
         )
         mock_pred.predict_batch.return_value = [
             PredictionOutput(
@@ -163,6 +167,7 @@ def client_low_risk():
 def client_high_risk():
     """TestClient where predictor returns a high fraud probability."""
     from src.inference.app import app
+
     with patch("src.inference.app.predictor") as mock_pred:
         mock_pred._loaded = True
         mock_pred.model_version = "test_v1"
@@ -182,6 +187,7 @@ def client_high_risk():
 # Health endpoint tests
 # ================================================================
 
+
 def test_health_returns_200(client_low_risk):
     response = client_low_risk.get("/health")
     assert response.status_code == 200
@@ -199,6 +205,7 @@ def test_health_contains_required_fields(client_low_risk):
 # ================================================================
 # Single predict endpoint — valid inputs
 # ================================================================
+
 
 def test_predict_minimal_transaction_returns_200(client_low_risk):
     """Minimal transaction with only required fields should succeed."""
@@ -278,6 +285,7 @@ def test_predict_transaction_id_preserved(client_low_risk):
 # Single predict endpoint — invalid inputs
 # ================================================================
 
+
 def test_predict_missing_transaction_id_returns_422(client_low_risk):
     txn = make_minimal_transaction()
     del txn["TransactionID"]
@@ -328,6 +336,7 @@ def test_predict_empty_body_returns_422(client_low_risk):
 # ================================================================
 # Edge cases — valid inputs but unusual values
 # ================================================================
+
 
 def test_predict_all_optional_fields_null(client_low_risk):
     """
@@ -399,6 +408,7 @@ def test_predict_extra_v_features_accepted(client_low_risk):
 # Batch predict endpoint tests
 # ================================================================
 
+
 def test_batch_predict_returns_200(client_low_risk):
     response = client_low_risk.post(
         "/predict/batch",
@@ -465,32 +475,38 @@ def test_batch_predict_single_transaction_works(client_low_risk):
 # Schemas unit tests
 # ================================================================
 
+
 def test_compute_risk_level_low():
     from src.inference.schemas import compute_risk_level
+
     assert compute_risk_level(0.10) == "LOW"
     assert compute_risk_level(0.29) == "LOW"
 
 
 def test_compute_risk_level_medium():
     from src.inference.schemas import compute_risk_level
+
     assert compute_risk_level(0.30) == "MEDIUM"
     assert compute_risk_level(0.49) == "MEDIUM"
 
 
 def test_compute_risk_level_high():
     from src.inference.schemas import compute_risk_level
+
     assert compute_risk_level(0.50) == "HIGH"
     assert compute_risk_level(0.79) == "HIGH"
 
 
 def test_compute_risk_level_critical():
     from src.inference.schemas import compute_risk_level
+
     assert compute_risk_level(0.80) == "CRITICAL"
     assert compute_risk_level(1.00) == "CRITICAL"
 
 
 def test_compute_risk_level_boundary_values():
     from src.inference.schemas import compute_risk_level
+
     assert compute_risk_level(0.0) == "LOW"
     assert compute_risk_level(0.3) == "MEDIUM"
     assert compute_risk_level(0.5) == "HIGH"
@@ -501,8 +517,10 @@ def test_compute_risk_level_boundary_values():
 # model_manager unit tests (no MLflow server required)
 # ================================================================
 
+
 def test_check_quality_gates_all_pass():
     from src.registry.model_manager import check_quality_gates
+
     metrics = {
         "auc_roc": 0.91,
         "auc_pr": 0.55,
@@ -517,9 +535,10 @@ def test_check_quality_gates_all_pass():
 
 def test_check_quality_gates_one_fails():
     from src.registry.model_manager import check_quality_gates
+
     metrics = {
         "auc_roc": 0.91,
-        "auc_pr": 0.35,   # below 0.50 gate
+        "auc_pr": 0.35,  # below 0.50 gate
         "recall": 0.65,
         "precision": 0.45,
     }
@@ -531,6 +550,7 @@ def test_check_quality_gates_one_fails():
 
 def test_check_quality_gates_missing_metric():
     from src.registry.model_manager import check_quality_gates
+
     metrics = {
         "auc_roc": 0.91,
         # auc_pr missing
@@ -545,6 +565,7 @@ def test_check_quality_gates_missing_metric():
 
 def test_check_quality_gates_all_fail():
     from src.registry.model_manager import check_quality_gates
+
     metrics = {
         "auc_roc": 0.50,
         "auc_pr": 0.03,
@@ -559,12 +580,12 @@ def test_check_quality_gates_all_fail():
 def test_check_quality_gates_exactly_at_boundary():
     """Values exactly at the gate threshold should pass."""
     from src.registry.model_manager import check_quality_gates
+
     metrics = {
-        "auc_roc": 0.85,   # exactly at gate
-        "auc_pr": 0.50,    # exactly at gate
-        "recall": 0.60,    # exactly at gate
-        "precision": 0.30, # exactly at gate
+        "auc_roc": 0.85,  # exactly at gate
+        "auc_pr": 0.50,  # exactly at gate
+        "recall": 0.60,  # exactly at gate
+        "precision": 0.30,  # exactly at gate
     }
     passed, report = check_quality_gates(metrics)
     assert passed is True
-    

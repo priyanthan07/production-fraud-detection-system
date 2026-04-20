@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib
+
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
@@ -17,34 +18,36 @@ BACKGROUND_SAMPLE_SIZE = 100
 MAX_WATERFALL_PLOTS = 5
 TOP_N_FEATURES = 20
 
+
 def compute_shap_values(
     model,
     X: pd.DataFrame,
     model_name: str,
 ) -> tuple:
     """
-        Compute SHAP values using TreeExplainer.
+    Compute SHAP values using TreeExplainer.
 
-        TreeExplainer is exact (not approximate) for tree-based models
-        and handles XGBoost, LightGBM, and CatBoost natively without
-        any special casing.
+    TreeExplainer is exact (not approximate) for tree-based models
+    and handles XGBoost, LightGBM, and CatBoost natively without
+    any special casing.
     """
     logger.info(f"Computing SHAP values for {model_name} on {len(X)} rows...")
-    
+
     explainer = shap.TreeExplainer(model)
     raw = explainer.shap_values(X)
-    
+
     # Older shap versions return [class_0_values, class_1_values].
     # Newer versions return a single array for binary classifiers.
     # Always extract the positive (fraud) class.
-    
+
     if isinstance(raw, list):
         shap_values = raw[1]
     else:
         shap_values = raw
-        
+
     logger.info(f"SHAP values shape: {shap_values.shape}")
     return explainer, shap_values
+
 
 def plot_summary_beeswarm(
     shap_values: np.ndarray,
@@ -53,15 +56,15 @@ def plot_summary_beeswarm(
     output_path: str,
 ) -> str:
     """
-        Generate a SHAP beeswarm summary plot.
+    Generate a SHAP beeswarm summary plot.
 
-        Each dot is one sample. The x-axis shows the SHAP value (impact
-        on model output). Colour encodes the feature value (red = high,
-        blue = low). Features are ranked by mean absolute SHAP value so
-        the most important features appear at the top.
+    Each dot is one sample. The x-axis shows the SHAP value (impact
+    on model output). Colour encodes the feature value (red = high,
+    blue = low). Features are ranked by mean absolute SHAP value so
+    the most important features appear at the top.
     """
     fig, ax = plt.subplots(figsize=(10, 8))
-    
+
     shap.summary_plot(
         shap_values,
         X,
@@ -69,12 +72,12 @@ def plot_summary_beeswarm(
         max_display=TOP_N_FEATURES,
         show=False,
     )
-    
+
     plt.title(
         f"{model_name} — SHAP Beeswarm (top {TOP_N_FEATURES} features)",
         pad=14,
     )
-    
+
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -82,19 +85,19 @@ def plot_summary_beeswarm(
     logger.info(f"Saved beeswarm plot: {output_path}")
     return output_path
 
+
 def plot_summary_bar(
     shap_values: np.ndarray,
     X: pd.DataFrame,
     model_name: str,
     output_path: str,
 ) -> str:
-    
     """
-        Generate a SHAP mean absolute value bar chart.
+    Generate a SHAP mean absolute value bar chart.
 
-        Shows the average magnitude of each feature's SHAP value across
-        all predictions. Simpler than beeswarm but easier for stakeholders
-        who need a ranked feature importance list.
+    Shows the average magnitude of each feature's SHAP value across
+    all predictions. Simpler than beeswarm but easier for stakeholders
+    who need a ranked feature importance list.
     """
     fig, ax = plt.subplots(figsize=(10, 8))
 
@@ -128,14 +131,14 @@ def plot_waterfall(
     output_path: str,
 ) -> str:
     """
-        Generate a SHAP waterfall plot for a single prediction.
+    Generate a SHAP waterfall plot for a single prediction.
 
-        Decomposes the model output for one transaction into contributions
-        from each feature, starting from the expected value and showing
-        how each feature pushes the prediction up (red) or down (blue).
+    Decomposes the model output for one transaction into contributions
+    from each feature, starting from the expected value and showing
+    how each feature pushes the prediction up (red) or down (blue).
 
-        This is the primary tool for explaining individual fraud decisions
-        to analysts or for debugging unexpected predictions.
+    This is the primary tool for explaining individual fraud decisions
+    to analysts or for debugging unexpected predictions.
     """
     # shap.Explanation wraps values, base value, and feature data into
     # the object expected by waterfall_plot (shap >= 0.40 API).
@@ -176,19 +179,21 @@ def build_shap_feature_importance(
     feature_names: list,
 ) -> pd.DataFrame:
     """
-        Build a DataFrame of mean absolute SHAP values per feature,
-        sorted descending.
+    Build a DataFrame of mean absolute SHAP values per feature,
+    sorted descending.
 
-        Saved as a CSV artifact so downstream tools (dashboards, model
-        cards) can consume feature importance without re-running SHAP.
+    Saved as a CSV artifact so downstream tools (dashboards, model
+    cards) can consume feature importance without re-running SHAP.
     """
     mean_abs = np.abs(shap_values).mean(axis=0)
 
     importance_df = (
-        pd.DataFrame({
-            "feature": feature_names,
-            "mean_abs_shap": mean_abs,
-        })
+        pd.DataFrame(
+            {
+                "feature": feature_names,
+                "mean_abs_shap": mean_abs,
+            }
+        )
         .sort_values("mean_abs_shap", ascending=False)
         .reset_index(drop=True)
     )
@@ -204,21 +209,21 @@ def run_shap_analysis(
     y_val: pd.Series,
 ) -> dict:
     """
-        Run the full SHAP analysis pipeline for one model and log all
-        artifacts to the active MLflow run.
+    Run the full SHAP analysis pipeline for one model and log all
+    artifacts to the active MLflow run.
 
-        Steps:
-        1. Sample validation set if too large (controls runtime)
-        2. Compute SHAP values via TreeExplainer
-        3. Save beeswarm summary plot
-        4. Save bar chart summary plot
-        5. Save waterfall plots for fraud and legitimate samples
-        6. Save feature importance CSV
-        7. Log all files as MLflow artifacts under shap/{model_name}/
-        8. Log top-10 SHAP importance values as MLflow metrics
+    Steps:
+    1. Sample validation set if too large (controls runtime)
+    2. Compute SHAP values via TreeExplainer
+    3. Save beeswarm summary plot
+    4. Save bar chart summary plot
+    5. Save waterfall plots for fraud and legitimate samples
+    6. Save feature importance CSV
+    7. Log all files as MLflow artifacts under shap/{model_name}/
+    8. Log top-10 SHAP importance values as MLflow metrics
 
-        Returns dict with paths to all generated artifacts and the
-        importance DataFrame for downstream use.
+    Returns dict with paths to all generated artifacts and the
+    importance DataFrame for downstream use.
     """
     logger.info(f"Running SHAP analysis for {model_name}...")
 
@@ -270,7 +275,9 @@ def run_shap_analysis(
         for i, idx in enumerate(fraud_indices[:MAX_WATERFALL_PLOTS]):
             path = str(tmp / f"{model_name}_waterfall_fraud_{i}.png")
             plot_waterfall(
-                explainer, shap_values, X_shap,
+                explainer,
+                shap_values,
+                X_shap,
                 row_index=int(idx),
                 model_name=model_name,
                 label=f"fraud_{i}",
@@ -281,7 +288,9 @@ def run_shap_analysis(
         for i, idx in enumerate(legit_indices[:MAX_WATERFALL_PLOTS]):
             path = str(tmp / f"{model_name}_waterfall_legit_{i}.png")
             plot_waterfall(
-                explainer, shap_values, X_shap,
+                explainer,
+                shap_values,
+                X_shap,
                 row_index=int(idx),
                 model_name=model_name,
                 label=f"legit_{i}",
@@ -294,9 +303,7 @@ def run_shap_analysis(
         # ----------------------------------------------------------------
         # Feature importance CSV
         # ----------------------------------------------------------------
-        importance_df = build_shap_feature_importance(
-            shap_values, list(X_shap.columns)
-        )
+        importance_df = build_shap_feature_importance(shap_values, list(X_shap.columns))
         importance_path = str(tmp / f"{model_name}_shap_importance.csv")
         importance_df.to_csv(importance_path, index=False)
         artifacts["importance_csv"] = importance_path
@@ -316,9 +323,7 @@ def run_shap_analysis(
         mlflow.log_artifact(importance_path, artifact_path=artifact_subdir)
 
         for wp in waterfall_paths:
-            mlflow.log_artifact(
-                wp, artifact_path=f"{artifact_subdir}/waterfall"
-            )
+            mlflow.log_artifact(wp, artifact_path=f"{artifact_subdir}/waterfall")
 
         # Log top-10 as MLflow metrics so they are queryable from the UI
         for _, row in importance_df.head(10).iterrows():
@@ -328,9 +333,7 @@ def run_shap_analysis(
                 round(float(row["mean_abs_shap"]), 6),
             )
 
-        logger.info(
-            f"SHAP artifacts logged to MLflow under '{artifact_subdir}'"
-        )
+        logger.info(f"SHAP artifacts logged to MLflow under '{artifact_subdir}'")
 
     artifacts["importance_df"] = importance_df
     return artifacts

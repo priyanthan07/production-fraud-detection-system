@@ -14,6 +14,7 @@ from src.monitoring.drift_detector import compute_psi, DriftDetector
 # Tests for compute_psi
 # ================================================================
 
+
 class TestComputePSI:
     """Tests for the standalone PSI computation function."""
 
@@ -38,7 +39,9 @@ class TestComputePSI:
         expected = pd.Series(np.random.normal(0, 1, 10000))
         actual = pd.Series(np.random.normal(3, 1, 10000))
         psi = compute_psi(expected, actual)
-        assert psi > 0.25, f"Very different distributions should have PSI > 0.25, got {psi}"
+        assert psi > 0.25, (
+            f"Very different distributions should have PSI > 0.25, got {psi}"
+        )
 
     def test_psi_is_non_negative(self):
         """PSI should always be >= 0."""
@@ -84,12 +87,15 @@ class TestComputePSI:
         expected = pd.Series(np.random.normal(0, 1, 10000))
         actual = pd.Series(np.random.normal(0.5, 1.2, 10000))
         psi = compute_psi(expected, actual)
-        assert 0.05 < psi < 0.50, f"Moderate shift PSI should be in 0.05-0.50, got {psi}"
+        assert 0.05 < psi < 0.50, (
+            f"Moderate shift PSI should be in 0.05-0.50, got {psi}"
+        )
 
 
 # ================================================================
 # Tests for DriftDetector
 # ================================================================
+
 
 class TestDriftDetector:
     """Tests for the DriftDetector class."""
@@ -114,37 +120,47 @@ class TestDriftDetector:
     @pytest.fixture
     def sample_baseline(self):
         np.random.seed(42)
-        return pd.DataFrame({
-            "feature_a": np.random.normal(0, 1, 5000),
-            "feature_b": np.random.uniform(0, 100, 5000),
-            "feature_c": np.random.exponential(2, 5000),
-            "isFraud": np.random.binomial(1, 0.035, 5000),
-        })
+        return pd.DataFrame(
+            {
+                "feature_a": np.random.normal(0, 1, 5000),
+                "feature_b": np.random.uniform(0, 100, 5000),
+                "feature_c": np.random.exponential(2, 5000),
+                "isFraud": np.random.binomial(1, 0.035, 5000),
+            }
+        )
 
     @pytest.fixture
     def sample_production_no_drift(self):
         np.random.seed(43)
-        return pd.DataFrame({
-            "feature_a": np.random.normal(0, 1, 1000),
-            "feature_b": np.random.uniform(0, 100, 1000),
-            "feature_c": np.random.exponential(2, 1000),
-            "isFraud": np.random.binomial(1, 0.035, 1000),
-        })
+        return pd.DataFrame(
+            {
+                "feature_a": np.random.normal(0, 1, 1000),
+                "feature_b": np.random.uniform(0, 100, 1000),
+                "feature_c": np.random.exponential(2, 1000),
+                "isFraud": np.random.binomial(1, 0.035, 1000),
+            }
+        )
 
     @pytest.fixture
     def sample_production_with_drift(self):
         np.random.seed(44)
-        return pd.DataFrame({
-            "feature_a": np.random.normal(3, 2, 1000),
-            "feature_b": np.random.uniform(50, 200, 1000),
-            "feature_c": np.random.exponential(10, 1000),
-            "isFraud": np.random.binomial(1, 0.15, 1000),
-        })
+        return pd.DataFrame(
+            {
+                "feature_a": np.random.normal(3, 2, 1000),
+                "feature_b": np.random.uniform(50, 200, 1000),
+                "feature_c": np.random.exponential(10, 1000),
+                "isFraud": np.random.binomial(1, 0.15, 1000),
+            }
+        )
 
     @patch("src.monitoring.drift_detector.load_drift_config")
     def test_no_drift_detected(
-        self, mock_load_config, mock_config,
-        sample_baseline, sample_production_no_drift, tmp_path
+        self,
+        mock_load_config,
+        mock_config,
+        sample_baseline,
+        sample_production_no_drift,
+        tmp_path,
     ):
         mock_config["drift_report_path"] = str(tmp_path)
         mock_config["drift_history_path"] = str(tmp_path / "history.csv")
@@ -161,8 +177,12 @@ class TestDriftDetector:
 
     @patch("src.monitoring.drift_detector.load_drift_config")
     def test_drift_detected(
-        self, mock_load_config, mock_config,
-        sample_baseline, sample_production_with_drift, tmp_path
+        self,
+        mock_load_config,
+        mock_config,
+        sample_baseline,
+        sample_production_with_drift,
+        tmp_path,
     ):
         mock_config["drift_report_path"] = str(tmp_path)
         mock_config["drift_history_path"] = str(tmp_path / "history.csv")
@@ -186,11 +206,13 @@ class TestDriftDetector:
         mock_config["min_sample_size"] = 500
         mock_load_config.return_value = mock_config
 
-        small_production = pd.DataFrame({
-            "feature_a": [1, 2, 3],
-            "feature_b": [4, 5, 6],
-            "feature_c": [7, 8, 9],
-        })
+        small_production = pd.DataFrame(
+            {
+                "feature_a": [1, 2, 3],
+                "feature_b": [4, 5, 6],
+                "feature_c": [7, 8, 9],
+            }
+        )
 
         detector = DriftDetector()
         detector.baseline_df = sample_baseline
@@ -203,20 +225,21 @@ class TestDriftDetector:
 
     @patch("src.monitoring.drift_detector.load_drift_config")
     def test_target_drift_triggers_retrain(
-        self, mock_load_config, mock_config,
-        sample_baseline, tmp_path
+        self, mock_load_config, mock_config, sample_baseline, tmp_path
     ):
         mock_config["drift_report_path"] = str(tmp_path)
         mock_config["drift_history_path"] = str(tmp_path / "history.csv")
         mock_load_config.return_value = mock_config
 
         np.random.seed(45)
-        production_target_drift = pd.DataFrame({
-            "feature_a": np.random.normal(0, 1, 1000),
-            "feature_b": np.random.uniform(0, 100, 1000),
-            "feature_c": np.random.exponential(2, 1000),
-            "isFraud": np.random.binomial(1, 0.15, 1000),
-        })
+        production_target_drift = pd.DataFrame(
+            {
+                "feature_a": np.random.normal(0, 1, 1000),
+                "feature_b": np.random.uniform(0, 100, 1000),
+                "feature_c": np.random.exponential(2, 1000),
+                "isFraud": np.random.binomial(1, 0.15, 1000),
+            }
+        )
 
         detector = DriftDetector()
         detector.baseline_df = sample_baseline
@@ -228,8 +251,12 @@ class TestDriftDetector:
 
     @patch("src.monitoring.drift_detector.load_drift_config")
     def test_report_saved(
-        self, mock_load_config, mock_config,
-        sample_baseline, sample_production_no_drift, tmp_path
+        self,
+        mock_load_config,
+        mock_config,
+        sample_baseline,
+        sample_production_no_drift,
+        tmp_path,
     ):
         mock_config["drift_report_path"] = str(tmp_path)
         mock_config["drift_history_path"] = str(tmp_path / "history.csv")
@@ -247,4 +274,3 @@ class TestDriftDetector:
 
         # Check history was saved
         assert (tmp_path / "history.csv").exists()
-        

@@ -7,36 +7,45 @@ from src.features.categorical_encoder import (
 )
 from src.features.velocity_features import compute_velocity_features
 
+
 def make_sample_df():
     """Minimal valid dataframe matching the real dataset structure."""
-    return pd.DataFrame({
-        "TransactionID": [1, 2, 3, 4, 5, 6],
-        "isFraud": [0, 0, 1, 0, 0, 1],
-        "TransactionDT": [86400, 90000, 93600, 180000, 266400, 604800],
-        "TransactionAmt": [10.0, 20.0, 200.0, 15.0, 25.0, 300.0],
-        "ProductCD": ["W", "W", "H", "W", "C", "H"],
-        "card1": [1001, 1001, 1001, 2001, 2001, 1001],
-        "card4": ["visa", "visa", "mastercard", "visa", "visa", "mastercard"],
-        "card6": ["debit", "debit", "credit", "debit", "debit", "credit"],
-        "P_emaildomain": [
-            "gmail.com", "gmail.com", "yahoo.com",
-            "gmail.com", None, "yahoo.com"
-        ],
-        "R_emaildomain": [None, None, None, None, None, None],
-        "M1": ["T", "T", "F", "T", "T", "F"],
-        "M2": ["T", "F", "T", "T", "F", "T"],
-        "M3": ["T", "T", "T", "F", "T", "F"],
-        "M4": ["M0", "M1", "M2", "M0", "M1", "M2"],
-        "M5": ["F", "T", "F", "F", "T", "F"],
-        "M6": ["T", "T", "F", "T", "T", "F"],
-        "M7": [None, None, None, None, None, None],
-        "M8": [None, None, None, None, None, None],
-        "M9": [None, None, None, None, None, None],
-    })
-    
+    return pd.DataFrame(
+        {
+            "TransactionID": [1, 2, 3, 4, 5, 6],
+            "isFraud": [0, 0, 1, 0, 0, 1],
+            "TransactionDT": [86400, 90000, 93600, 180000, 266400, 604800],
+            "TransactionAmt": [10.0, 20.0, 200.0, 15.0, 25.0, 300.0],
+            "ProductCD": ["W", "W", "H", "W", "C", "H"],
+            "card1": [1001, 1001, 1001, 2001, 2001, 1001],
+            "card4": ["visa", "visa", "mastercard", "visa", "visa", "mastercard"],
+            "card6": ["debit", "debit", "credit", "debit", "debit", "credit"],
+            "P_emaildomain": [
+                "gmail.com",
+                "gmail.com",
+                "yahoo.com",
+                "gmail.com",
+                None,
+                "yahoo.com",
+            ],
+            "R_emaildomain": [None, None, None, None, None, None],
+            "M1": ["T", "T", "F", "T", "T", "F"],
+            "M2": ["T", "F", "T", "T", "F", "T"],
+            "M3": ["T", "T", "T", "F", "T", "F"],
+            "M4": ["M0", "M1", "M2", "M0", "M1", "M2"],
+            "M5": ["F", "T", "F", "F", "T", "F"],
+            "M6": ["T", "T", "F", "T", "T", "F"],
+            "M7": [None, None, None, None, None, None],
+            "M8": [None, None, None, None, None, None],
+            "M9": [None, None, None, None, None, None],
+        }
+    )
+
+
 # ----------------------------------------------------------------
 # Time feature tests
 # ----------------------------------------------------------------
+
 
 def test_time_features_columns_created():
     df = make_sample_df()
@@ -52,7 +61,8 @@ def test_time_features_columns_created():
     ]
     for col in expected_cols:
         assert col in result.columns, f"Missing column: {col}"
-        
+
+
 def test_hour_of_day_range():
     df = make_sample_df()
     result = compute_time_features(df)
@@ -69,7 +79,8 @@ def test_days_since_card_first_seen_non_negative():
     df = make_sample_df()
     result = compute_time_features(df)
     assert (result["days_since_card_first_seen"] >= 0).all()
-    
+
+
 def test_is_night_transaction_binary():
     df = make_sample_df()
     result = compute_time_features(df)
@@ -132,6 +143,7 @@ def test_first_transaction_velocity_is_zero():
 # ----------------------------------------------------------------
 # User aggregation tests
 # ----------------------------------------------------------------
+
 
 def test_user_aggregation_columns_created():
     df = make_sample_df()
@@ -203,6 +215,7 @@ def test_email_zscore_exists():
 # Categorical encoder tests
 # ----------------------------------------------------------------
 
+
 def test_target_encoder_returns_tuple():
     df = make_sample_df()
     result = fit_target_encoder(df, ["ProductCD", "card4"])
@@ -218,9 +231,7 @@ def test_target_encoder_produces_encoded_columns():
 
 def test_target_encoder_global_mean_correct():
     df = make_sample_df()
-    df_encoded, encodings = fit_target_encoder(
-        df, ["ProductCD"], target_col="isFraud"
-    )
+    df_encoded, encodings = fit_target_encoder(df, ["ProductCD"], target_col="isFraud")
     expected_global_mean = df["isFraud"].mean()
     assert abs(encodings["ProductCD"]["global_mean"] - expected_global_mean) < 1e-6
 
@@ -252,12 +263,8 @@ def test_encoded_column_names_match_between_train_and_inference():
     df_encoded, encodings = fit_target_encoder(df, ["ProductCD", "card4"])
     inference_df = apply_target_encoder(df, encodings)
 
-    training_cols = sorted([
-        c for c in df_encoded.columns if c.endswith("_encoded")
-    ])
-    inference_cols = sorted([
-        c for c in inference_df.columns if c.endswith("_encoded")
-    ])
+    training_cols = sorted([c for c in df_encoded.columns if c.endswith("_encoded")])
+    inference_cols = sorted([c for c in inference_df.columns if c.endswith("_encoded")])
 
     assert training_cols == inference_cols, (
         f"Training columns {training_cols} do not match "
