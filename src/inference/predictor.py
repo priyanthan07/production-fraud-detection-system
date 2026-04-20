@@ -7,7 +7,6 @@ import mlflow.sklearn
 from mlflow.tracking import MlflowClient
 import yaml
 from pathlib import Path
-from typing import Optional
 
 from src.features.time_features import compute_time_features
 from src.features.velocity_features import compute_velocity_features

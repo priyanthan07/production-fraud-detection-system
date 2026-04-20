@@ -307,7 +307,7 @@ class DriftDetector:
         reason = " AND ".join(reasons) if reasons else "No significant drift detected"
 
         # Log summary
-        logger.info(f"\nDrift Detection Summary:")
+        logger.info("\nDrift Detection Summary:")
         logger.info(f"  Features monitored: {total_features}")
         logger.info(f"  OK:       {ok_features}")
         logger.info(f"  WARNING:  {warning_features}")

@@ -65,7 +65,7 @@ def validate_raw_data(df: pd.DataFrame, report_dir: str = "data/validation_repor
     if "isFraud" in df.columns:
         invalid_target = df[~df["isFraud"].isin([0, 1])]
         if len(invalid_target) > 0:
-            errors.append(f"isFraud column contains values other than 0 and 1")
+            errors.append("isFraud column contains values other than 0 and 1")
         else:
             logger.info("Check 4 passed: isFraud column values are valid")
     
@@ -157,7 +157,7 @@ def validate_raw_data(df: pd.DataFrame, report_dir: str = "data/validation_repor
     report_path = Path(report_dir) / f"validation_report_{timestamp}.txt"
     
     with open(report_path, "w") as f:
-        f.write(f"Validation Report\n")
+        f.write("Validation Report\n")
         f.write(f"Generated: {timestamp}\n")
         f.write(f"Dataset shape: {df.shape}\n\n")
 
