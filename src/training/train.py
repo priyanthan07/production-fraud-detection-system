@@ -258,7 +258,9 @@ def main():
             )
 
             # Log model
-            signature = infer_signature(X_val_float, model.predict_proba(X_val)[:, 1])
+            signature = infer_signature(
+                X_val_float, model.predict_proba(X_val_float)[:, 1]
+            )
 
             mlflow.sklearn.log_model(
                 model,

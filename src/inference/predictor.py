@@ -102,9 +102,7 @@ class FraudPredictor:
             )
 
         except Exception as e:
-            logger.info(
-                f"Could not load from MLflow artifacts: {e}. Trying local disk."
-            )
+            logger.info(f"Could not load from MLflow artifacts: {e}.")
 
     def _load_version_and_threshold(self, model_uri: str) -> str:
         """

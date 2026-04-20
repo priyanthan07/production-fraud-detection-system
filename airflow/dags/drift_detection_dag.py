@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.python import PythonOperator
+from airflow.operators.python import PythonOperator, BranchPythonOperator
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
 
@@ -110,7 +110,7 @@ with DAG(
     )
 
     # Task 2: Evaluate results
-    evaluate = PythonOperator(
+    evaluate = BranchPythonOperator(
         task_id="evaluate_drift",
         python_callable=evaluate_drift,
         provide_context=True,
@@ -121,6 +121,7 @@ with DAG(
         task_id="log_no_retrain",
         python_callable=log_no_retrain,
         provide_context=True,
+        trigger_rule="none_failed_min_one_success",
     )
 
     # Task 3b: Trigger retraining DAG

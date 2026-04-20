@@ -25,6 +25,7 @@ def validate_data(**context):
     """
     import logging
     import sys
+    from pathlib import Path
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -32,6 +33,9 @@ def validate_data(**context):
 
     from src.ingestion.loader import load_raw_data
     from src.ingestion.validator import validate_raw_data
+    
+    project_root = Path("/opt/airflow/project")
+    raw_data_path = str(project_root / "data/raw")
 
     logger.info("Loading raw data...")
     raw_df = load_raw_data("data/raw")
@@ -132,25 +136,19 @@ def save_new_baseline(**context):
     )
 
     if not promotion_result or not promotion_result.get("promoted"):
-        logger.info(
-            "Model was not promoted — keeping existing baseline."
-        )
+        logger.info("Model was not promoted — keeping existing baseline.")
         return
 
-    # Copy the processed training data as the new drift baseline
-    source = Path("data/processed/train_features.parquet")
-    baseline = Path("data/processed/drift_baseline.parquet")
+    # Use absolute path based on project root mounted in container
+    project_root = Path("/opt/airflow/project")
+    source = project_root / "data/processed/train_features.parquet"
+    baseline = project_root / "data/processed/drift_baseline.parquet"
 
     if source.exists():
         shutil.copy2(source, baseline)
-        logger.info(
-            f"Updated drift baseline from {source} to {baseline}"
-        )
+        logger.info(f"Updated drift baseline from {source} to {baseline}")
     else:
-        logger.warning(
-            f"Source file {source} not found. Baseline not updated."
-        )
-
+        logger.warning(f"Source file {source} not found. Baseline not updated.")
 
 def log_retraining_complete(**context):
     """

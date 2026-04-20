@@ -6,7 +6,7 @@ datasources:
     access: proxy
 
     # If running Grafana locally (not in Docker):
-    url: http://localhost:9090
+    url: http://prometheus:9090
 
     # If running in Docker with compose:
     # Ex, url: http://prometheus:9090
