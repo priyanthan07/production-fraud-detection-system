@@ -1,6 +1,4 @@
-import pytest
 import pandas as pd
-import numpy as np
 from src.features.time_features import compute_time_features
 from src.features.user_aggregations import compute_user_aggregations
 from src.features.categorical_encoder import (

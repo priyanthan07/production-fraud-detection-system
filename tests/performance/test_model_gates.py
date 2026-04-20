@@ -1,5 +1,4 @@
 import pytest
-import pandas as pd
 import numpy as np
 from src.training.evaluator import evaluate_model
 from src.training.threshold_optimizer import find_optimal_threshold

@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import logging
 import pickle
 import yaml
@@ -204,7 +203,7 @@ def main():
     model_names = ["xgboost", "lightgbm", "catboost"]
         
     # Log feature list as artifact
-    feature_list_path = f"data/processed/feature_columns.txt"
+    feature_list_path = "data/processed/feature_columns.txt"
     
     with open(feature_list_path, "w") as f:
         f.write("\n".join(feature_cols))

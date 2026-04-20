@@ -5,8 +5,7 @@ Tests for drift detection.
 import pytest
 import pandas as pd
 import numpy as np
-from unittest.mock import patch, MagicMock
-from pathlib import Path
+from unittest.mock import patch
 
 from src.monitoring.drift_detector import compute_psi, DriftDetector
 
