@@ -1,0 +1,62 @@
+# --- Baseline data path ---
+# The training data that the model was trained on.
+# Drift is measured as "how different is production data from this?"
+baseline_data_path: "data/processed/train_features.parquet"
+
+# --- Production data path ---
+# Recent production predictions are logged here by the inference
+# server. The drift detector reads this to compare against baseline.
+production_data_path: "data/production/recent_predictions.parquet"
+
+# --- Output paths ---
+drift_report_path: "data/drift_reports"
+drift_history_path: "data/drift_reports/drift_history.csv"
+
+# --- PSI thresholds ---
+psi_warning_threshold: 0.10    # log a warning
+psi_critical_threshold: 0.25   # trigger retraining
+
+# --- How many features must drift to trigger retraining ---
+# If more than this fraction of monitored features exceed the critical threshold, retraining is triggered.
+# 0.20 means if 20% or more of features have significant drift, the system considers the data distribution to have shifted
+# enough to warrant a full retrain.
+drift_feature_fraction: 0.20
+
+# --- Target drift ---
+# If the fraud rate itself changes significantly, that is the
+# strongest signal that the model needs retraining.
+target_column: "isFraud"
+target_drift_threshold: 0.05   # absolute change in fraud rate
+
+# --- Features to monitor ---
+monitored_features:
+  - C13
+  - C14
+  - card6_encoded
+  - V70
+  - C1
+  - TransactionAmt
+  - D1
+  - D15
+  - C2
+  - C11
+
+  # Key business features
+  - card1_count_1hr
+  - card1_count_24hr
+  - card1_amt_mean
+  - card1_amt_zscore
+  - hour_of_day
+  - is_night_transaction
+  - is_weekend
+  - ProductCD_encoded
+  - P_emaildomain_encoded
+
+# --- Minimum sample size ---
+# Do not run drift detection if production data has fewer than
+# this many rows. Small samples produce noisy PSI values.
+min_sample_size: 500
+
+# --- Schedule ---
+# How often drift detection runs (used by Airflow DAG)
+schedule_interval: "0 6 * * *"   # daily at 6 AM

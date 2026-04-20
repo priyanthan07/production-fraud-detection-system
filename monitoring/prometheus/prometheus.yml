@@ -20,3 +20,4 @@ scrape_configs:
           - "localhost:9090"
         labels:
           service: "prometheus"
+          
