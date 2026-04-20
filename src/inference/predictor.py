@@ -70,9 +70,6 @@ class FraudPredictor:
                 "Loading from local path — version info unavailable. Using default threshold 0.5."
             )
 
-        encodings_loaded = False
-        features_loaded = False
-
         if not self.run_id:
             raise RuntimeError(
                 "No run_id available. Cannot download artifacts. "
