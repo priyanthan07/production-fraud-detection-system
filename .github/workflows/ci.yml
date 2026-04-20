@@ -70,7 +70,7 @@ jobs:
       - name: Build inference image
         run: |
           docker build \
-            -f docker/inference.Dockerfile \
+            -f docker/inference/Dockerfile \
             -t fraud-inference:${{ github.sha }} \
             -t fraud-inference:latest \
             .
@@ -78,7 +78,7 @@ jobs:
       - name: Build MLflow image
         run: |
           docker build \
-            -f docker/mlflow.Dockerfile \
+            -f docker/mlflow/Dockerfile \
             -t fraud-mlflow:${{ github.sha }} \
             -t fraud-mlflow:latest \
             .
@@ -86,7 +86,7 @@ jobs:
       - name: Build Airflow image
         run: |
           docker build \
-            -f docker/airflow.Dockerfile \
+            -f docker/airflow/Dockerfile \
             -t fraud-airflow:${{ github.sha }} \
             -t fraud-airflow:latest \
             .
