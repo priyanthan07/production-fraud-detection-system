@@ -104,7 +104,7 @@ def load_or_compute_features(config: dict) -> tuple:
     processed_path = Path(config["processed_train_path"])
     encoding_path = Path(config["encodings_path"])
     raw_path = Path(config["raw_path"])
-    
+
     processed_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Check if cache exists AND is newer than raw data
@@ -112,11 +112,11 @@ def load_or_compute_features(config: dict) -> tuple:
     if processed_path.exists() and encoding_path.exists():
         cache_time = processed_path.stat().st_mtime
         raw_files = list(raw_path.glob("*.csv"))
-        
+
         if raw_files:
             newest_raw = max(f.stat().st_mtime for f in raw_files)
             cache_valid = cache_time > newest_raw
-            
+
     if cache_valid:
         logger.info("Loading cached processed features from disk...")
         df = pd.read_parquet(processed_path)
@@ -288,8 +288,10 @@ def main():
                 shap_artifacts = {}
 
             mlflow.log_artifact(feature_list_path, artifact_path="features")
-            mlflow.log_artifact(str(Path(config["encodings_path"])),artifact_path="features")
-            
+            mlflow.log_artifact(
+                str(Path(config["encodings_path"])), artifact_path="features"
+            )
+
             results[model_name] = {
                 "model": model,
                 "metrics": metrics,

@@ -69,16 +69,16 @@ class FraudPredictor:
             logger.warning(
                 "Loading from local path — version info unavailable. Using default threshold 0.5."
             )
-        
+
         encodings_loaded = False
         features_loaded = False
-        
+
         if not self.run_id:
             raise RuntimeError(
                 "No run_id available. Cannot download artifacts. "
                 "Make sure a model is registered in MLflow."
             )
-        
+
         try:
             client = MlflowClient()
             artifact_dir = client.download_artifacts(
@@ -90,18 +90,24 @@ class FraudPredictor:
                 self.encodings = pickle.load(f)
 
             with open(artifact_path / "feature_columns.txt") as f:
-                self.feature_columns = [line.strip() for line in f.readlines() if line.strip()]
-            
-            logger.info(f"Loaded encodings for {len(self.encodings)} categorical columns.")
+                self.feature_columns = [
+                    line.strip() for line in f.readlines() if line.strip()
+                ]
+
+            logger.info(
+                f"Loaded encodings for {len(self.encodings)} categorical columns."
+            )
             logger.info(f"Loaded {len(self.feature_columns)} feature columns.")
-            
+
             self._loaded = True
             logger.info(
                 f"Predictor ready. Model version: {self.model_version}, Threshold: {self.threshold:.4f}"
             )
-            
+
         except Exception as e:
-            logger.info(f"Could not load from MLflow artifacts: {e}. Trying local disk.")
+            logger.info(
+                f"Could not load from MLflow artifacts: {e}. Trying local disk."
+            )
 
     def _load_version_and_threshold(self, model_uri: str) -> str:
         """
