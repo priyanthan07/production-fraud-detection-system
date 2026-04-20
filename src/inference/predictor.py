@@ -16,8 +16,7 @@ from src.inference.schemas import TransactionInput, PredictionOutput, compute_ri
 
 logger = logging.getLogger(__name__)
 
-ENCODINGS_PATH = Path("data/processed/encodings.pkl")
-FEATURE_COLUMNS_PATH = Path("data/processed/feature_columns.txt")
+
 CONFIG_PATH = Path("configs/model_config.yaml")
 
 MODEL_NAME = "fraud_detection_model"
@@ -30,6 +29,7 @@ class FraudPredictor:
         self.feature_columns = None
         self.threshold = 0.5
         self.model_version = None
+        self.run_id = None
         self.config = None
         self._loaded = False
 
@@ -69,35 +69,39 @@ class FraudPredictor:
             logger.warning(
                 "Loading from local path — version info unavailable. Using default threshold 0.5."
             )
-
-        # Load encodings
-        if not ENCODINGS_PATH.exists():
-            raise FileNotFoundError(
-                f"Encodings file not found at {ENCODINGS_PATH}. Run training first to generate this file."
+        
+        encodings_loaded = False
+        features_loaded = False
+        
+        if not self.run_id:
+            raise RuntimeError(
+                "No run_id available. Cannot download artifacts. "
+                "Make sure a model is registered in MLflow."
             )
-
-        with open(ENCODINGS_PATH, "rb") as f:
-            self.encodings = pickle.load(f)
-
-        logger.info(f"Loaded encodings for {len(self.encodings)} categorical columns.")
-
-        # Load feature columns
-        if not FEATURE_COLUMNS_PATH.exists():
-            raise FileNotFoundError(
-                f"Feature columns file not found at {FEATURE_COLUMNS_PATH}. Run training first to generate this file."
+        
+        try:
+            client = MlflowClient()
+            artifact_dir = client.download_artifacts(
+                self.run_id, "features", dst_path="/tmp/fraud_artifacts"
             )
+            artifact_path = Path(artifact_dir)
 
-        with open(FEATURE_COLUMNS_PATH) as f:
-            self.feature_columns = [
-                line.strip() for line in f.readlines() if line.strip()
-            ]
+            with open(artifact_path / "encodings.pkl", "rb") as f:
+                self.encodings = pickle.load(f)
 
-        logger.info(f"Loaded {len(self.feature_columns)} feature columns.")
-
-        self._loaded = True
-        logger.info(
-            f"Predictor ready. Model version: {self.model_version}, Threshold: {self.threshold:.4f}"
-        )
+            with open(artifact_path / "feature_columns.txt") as f:
+                self.feature_columns = [line.strip() for line in f.readlines() if line.strip()]
+            
+            logger.info(f"Loaded encodings for {len(self.encodings)} categorical columns.")
+            logger.info(f"Loaded {len(self.feature_columns)} feature columns.")
+            
+            self._loaded = True
+            logger.info(
+                f"Predictor ready. Model version: {self.model_version}, Threshold: {self.threshold:.4f}"
+            )
+            
+        except Exception as e:
+            logger.info(f"Could not load from MLflow artifacts: {e}. Trying local disk.")
 
     def _load_version_and_threshold(self, model_uri: str) -> str:
         """
@@ -123,11 +127,13 @@ class FraudPredictor:
                 version_obj = client.get_model_version(model_name, stage_or_version)
                 self.model_version = stage_or_version
                 run_id = version_obj.run_id
+                self.run_id = run_id
 
             elif versions:
                 version_obj = versions[0]
                 self.model_version = version_obj.version
                 run_id = version_obj.run_id
+                self.run_id = run_id
 
             else:
                 logger.warning(

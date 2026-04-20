@@ -50,6 +50,9 @@ mlflow_experiment_name: fraud_detection
 # MLflow model registry name
 mlflow_model_name: fraud_detection_model
 
+#raw path
+raw_path: data/raw
+
 # Processed features path
 processed_train_path: data/processed/train_features.parquet
 processed_test_path: data/processed/test_features.parquet

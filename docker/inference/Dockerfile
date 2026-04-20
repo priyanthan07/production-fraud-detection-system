@@ -14,12 +14,6 @@ RUN pip install --no-cache-dir uv \
 
 COPY src/ src/
 COPY configs/ configs/
-
-# Copy pre-trained artifacts needed at inference time
-COPY data/processed/encodings.pkl data/processed/encodings.pkl
-COPY data/processed/feature_columns.txt data/processed/feature_columns.txt
-
-# Copy monitoring configs for Prometheus metrics
 COPY monitoring/ monitoring/
 
 # Expose the inference port
