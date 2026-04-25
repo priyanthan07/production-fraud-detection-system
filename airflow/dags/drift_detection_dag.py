@@ -22,11 +22,13 @@ def run_drift_detection(**context):
     Task 1: Run the drift detector.
     """
     import logging
+
     logging.basicConfig(level=logging.INFO)
 
     # Import here to avoid Airflow import-time errors
     # when the module is not on the Airflow worker's PYTHONPATH
     import sys
+
     sys.path.insert(0, "/opt/airflow/project")
 
     from src.monitoring.drift_detector import DriftDetector
@@ -45,6 +47,7 @@ def evaluate_drift(**context):
     Task 2: Evaluate drift results and decide whether to retrain.
     """
     import logging
+
     logger = logging.getLogger(__name__)
 
     drift_result = context["ti"].xcom_pull(
@@ -72,8 +75,7 @@ def evaluate_drift(**context):
         return "trigger_retrain"
     else:
         logger.info(
-            f"No significant drift. "
-            f"Reason: {drift_result.get('reason', 'No drift')}"
+            f"No significant drift. Reason: {drift_result.get('reason', 'No drift')}"
         )
         return "no_retrain"
 
@@ -84,6 +86,7 @@ def log_no_retrain(**context):
     Called when drift is below threshold.
     """
     import logging
+
     logger = logging.getLogger(__name__)
     logger.info("Drift check complete. No retraining needed today.")
 
@@ -101,7 +104,6 @@ with DAG(
     max_active_runs=1,
     tags=["fraud", "ml", "monitoring", "drift"],
 ) as dag:
-
     # Task 1: Run drift detection
     detect_drift = PythonOperator(
         task_id="run_drift_detection",
@@ -146,4 +148,3 @@ with DAG(
     # tasks run but only the relevant one does meaningful work.
     # ----------------------------------------------------------------
     detect_drift >> evaluate >> [trigger_retrain, no_retrain]
-    

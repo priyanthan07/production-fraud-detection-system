@@ -13,8 +13,13 @@ print("Press Ctrl+C to stop")
 
 mlflow_exe = Path(".venv/Scripts/mlflow.exe")
 
-subprocess.run([
-    str(mlflow_exe), "ui",
-    "--backend-store-uri", tracking_uri,
-    "--port", "5000",
-])
+subprocess.run(
+    [
+        str(mlflow_exe),
+        "ui",
+        "--backend-store-uri",
+        tracking_uri,
+        "--port",
+        "5000",
+    ]
+)

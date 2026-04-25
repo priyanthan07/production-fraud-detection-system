@@ -22,28 +22,29 @@ CATEGORICAL_COLUMNS = [
     "M9",
 ]
 
+
 def _compute_smoothed_means(
     df: pd.DataFrame,
     col: str,
     target_col: str,
     global_mean: float,
     smoothing: float,
-)-> dict:
+) -> dict:
     """
-        Compute smoothed category means from a given dataframe slice.
-        Used both inside the CV loop (on train folds) and after the loop
-        (on the full dataset for inference encodings).
+    Compute smoothed category means from a given dataframe slice.
+    Used both inside the CV loop (on train folds) and after the loop
+    (on the full dataset for inference encodings).
 
-        Extracted as a helper so the same formula is used in both places
-        — no risk of the two diverging.
+    Extracted as a helper so the same formula is used in both places
+    — no risk of the two diverging.
     """
-    stats = (
-        df.groupby(col)[target_col].agg(["mean", "count"]).reset_index()
-    )
-    
+    stats = df.groupby(col)[target_col].agg(["mean", "count"]).reset_index()
+
     stats.columns = [col, "cat_mean", "cat_count"]
-    stats["smoothed_mean"] = (stats["cat_count"] * stats["cat_mean"] + smoothing * global_mean) / (stats["cat_count"] + smoothing)
-    
+    stats["smoothed_mean"] = (
+        stats["cat_count"] * stats["cat_mean"] + smoothing * global_mean
+    ) / (stats["cat_count"] + smoothing)
+
     return stats.set_index(col)["smoothed_mean"].to_dict()
 
 
@@ -85,7 +86,7 @@ def fit_target_encoder(
 
         for fold_num, (train_idx, val_idx) in enumerate(kf.split(df)):
             train_fold = df.iloc[train_idx]
-            val_fold   = df.iloc[val_idx]
+            val_fold = df.iloc[val_idx]
 
             # Smoothed category means from training fold ONLY
             fold_means = _compute_smoothed_means(
@@ -93,9 +94,7 @@ def fit_target_encoder(
             )
 
             # Map validation rows using training-fold means
-            val_mapped = (
-                val_fold[col].map(fold_means).fillna(global_mean).values
-            )
+            val_mapped = val_fold[col].map(fold_means).fillna(global_mean).values
 
             encoded[val_idx] = val_mapped
 
@@ -118,7 +117,7 @@ def fit_target_encoder(
         logger.info(
             f"  '{col}' encoding complete. Categories: {len(inference_means)}, global_mean: {global_mean:.4f}"
         )
-        
+
     return df, encodings
 
 

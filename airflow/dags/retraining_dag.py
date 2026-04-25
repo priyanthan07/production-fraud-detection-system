@@ -26,6 +26,7 @@ def validate_data(**context):
     import logging
     import sys
     from pathlib import Path
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ def validate_data(**context):
 
     from src.ingestion.loader import load_raw_data
     from src.ingestion.validator import validate_raw_data
-    
+
     project_root = Path("/opt/airflow/project")
     raw_data_path = str(project_root / "data/raw")
 
@@ -44,8 +45,7 @@ def validate_data(**context):
     validate_raw_data(raw_df)
 
     logger.info(
-        f"Data validation passed. {len(raw_df)} rows, "
-        f"{len(raw_df.columns)} columns."
+        f"Data validation passed. {len(raw_df)} rows, {len(raw_df.columns)} columns."
     )
 
     # Push row count to XCom for logging
@@ -59,6 +59,7 @@ def run_training(**context):
     import logging
     import subprocess
     import sys
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -74,9 +75,7 @@ def run_training(**context):
 
     if result.returncode != 0:
         logger.error(f"Training failed:\n{result.stderr[-2000:]}")
-        raise RuntimeError(
-            f"Training pipeline failed with code {result.returncode}"
-        )
+        raise RuntimeError(f"Training pipeline failed with code {result.returncode}")
 
     logger.info("Training pipeline completed successfully.")
 
@@ -94,6 +93,7 @@ def promote_model(**context):
     """
     import logging
     import sys
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -104,20 +104,21 @@ def promote_model(**context):
     result = run_promotion_workflow(auto_select=True)
 
     if result["promoted"]:
-        logger.info(
-            f"Model version {result['version']} promoted to Production!"
-        )
+        logger.info(f"Model version {result['version']} promoted to Production!")
     else:
         logger.warning(
             f"Model version {result['version']} failed quality gates. "
             f"Current Production model remains unchanged."
         )
 
-    context["ti"].xcom_push(key="promotion_result", value={
-        "promoted": result["promoted"],
-        "version": result["version"],
-        "gates_passed": result["gates_passed"],
-    })
+    context["ti"].xcom_push(
+        key="promotion_result",
+        value={
+            "promoted": result["promoted"],
+            "version": result["version"],
+            "gates_passed": result["gates_passed"],
+        },
+    )
 
 
 def save_new_baseline(**context):
@@ -127,6 +128,7 @@ def save_new_baseline(**context):
     import logging
     import shutil
     from pathlib import Path
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -150,11 +152,13 @@ def save_new_baseline(**context):
     else:
         logger.warning(f"Source file {source} not found. Baseline not updated.")
 
+
 def log_retraining_complete(**context):
     """
     Task 5: Log the retraining completion for auditing.
     """
     import logging
+
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
@@ -194,7 +198,6 @@ with DAG(
     # and concurrent runs would compete for memory and CPU.
     tags=["fraud", "ml", "retraining"],
 ) as dag:
-
     # Task 1: Validate data
     validate = PythonOperator(
         task_id="validate_data",
@@ -242,4 +245,3 @@ with DAG(
     # If promotion fails, baseline is not updated.
     # ----------------------------------------------------------------
     validate >> train >> promote >> update_baseline >> log_complete
-    
