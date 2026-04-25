@@ -22,6 +22,30 @@ CATEGORICAL_COLUMNS = [
     "M9",
 ]
 
+def _compute_smoothed_means(
+    df: pd.DataFrame,
+    col: str,
+    target_col: str,
+    global_mean: float,
+    smoothing: float,
+)-> dict:
+    """
+        Compute smoothed category means from a given dataframe slice.
+        Used both inside the CV loop (on train folds) and after the loop
+        (on the full dataset for inference encodings).
+
+        Extracted as a helper so the same formula is used in both places
+        — no risk of the two diverging.
+    """
+    stats = (
+        df.groupby(col)[target_col].agg(["mean", "count"]).reset_index()
+    )
+    
+    stats.columns = [col, "cat_mean", "cat_count"]
+    stats["smoothed_mean"] = (stats["cat_count"] * stats["cat_mean"] + smoothing * global_mean) / (stats["cat_count"] + smoothing)
+    
+    return stats.set_index(col)["smoothed_mean"].to_dict()
+
 
 def fit_target_encoder(
     df: pd.DataFrame,
@@ -33,15 +57,16 @@ def fit_target_encoder(
     """
     Fit target encoding using cross-validation folds to prevent leakage.
 
-    For each categorical column, compute the mean target value per category.
-    Cross-validation ensures the encoding for a row is computed from
-    other folds, never from the row itself.
+    Two outputs:
+    1. df — training dataframe with leak-free encoded columns produced
+            by the CV loop. Each row's encoding was computed from the
+            other folds only, never from the row itself.
 
-    Smoothing blends the category mean with the global mean to handle
-    rare categories with very few samples.
-
-    Returns a dictionary of encodings that can be saved and reused at
-    inference time.
+    2. encodings — dict of category means computed from the FULL dataset.
+            Used at inference time. At inference there is no label to
+            leak, so using all rows gives the most stable estimate.
+            These values will be close to but not identical to the
+            CV values — that small gap is acceptable and expected.
     """
     df = df.copy()
 
@@ -58,55 +83,42 @@ def fit_target_encoder(
 
         encoded = np.full(len(df), global_mean)
 
-        for train_idx, val_idx in kf.split(df):
+        for fold_num, (train_idx, val_idx) in enumerate(kf.split(df)):
             train_fold = df.iloc[train_idx]
-            val_fold = df.iloc[val_idx]
+            val_fold   = df.iloc[val_idx]
 
-            # Compute category means on training fold only
-            category_stats = (
-                train_fold.groupby(col)[target_col].agg(["mean", "count"]).reset_index()
+            # Smoothed category means from training fold ONLY
+            fold_means = _compute_smoothed_means(
+                train_fold, col, target_col, global_mean, smoothing
             )
 
-            category_stats.columns = [col, "cat_mean", "cat_count"]
-
-            # Apply smoothing: blend category mean with global mean
-            # Categories with few samples pull toward global mean
-
-            category_stats["smoothed_mean"] = (
-                category_stats["cat_count"] * category_stats["cat_mean"]
-                + smoothing * global_mean
-            ) / (category_stats["cat_count"] + smoothing)
-
-            # Map encoded values to validation fold
+            # Map validation rows using training-fold means
             val_mapped = (
-                val_fold[[col]]
-                .merge(category_stats[[col, "smoothed_mean"]], on=col, how="left")[
-                    "smoothed_mean"
-                ]
-                .fillna(global_mean)
-                .values
+                val_fold[col].map(fold_means).fillna(global_mean).values
             )
 
             encoded[val_idx] = val_mapped
 
+            logger.debug(
+                f"  Fold {fold_num + 1}: train={len(train_idx)} rows, val={len(val_idx)} rows, categories seen: {list(fold_means.keys())}"
+            )
+
+        # Store leak-free encoded column in df (used for model training)
         df[f"{col}_encoded"] = encoded
+
+        inference_means = _compute_smoothed_means(
+            df, col, target_col, global_mean, smoothing
+        )
 
         encodings[col] = {
             "global_mean": global_mean,
-            "category_means": (
-                df.groupby(col)[target_col]
-                .agg(["mean", "count"])
-                .reset_index()
-                .assign(
-                    smoothed_mean=lambda x: (
-                        (x["count"] * x["mean"] + smoothing * global_mean)
-                        / (x["count"] + smoothing)
-                    )
-                )
-                .set_index(col)["smoothed_mean"]
-                .to_dict()
-            ),
+            "category_means": inference_means,
         }
+
+        logger.info(
+            f"  '{col}' encoding complete. Categories: {len(inference_means)}, global_mean: {global_mean:.4f}"
+        )
+        
     return df, encodings
 
 
