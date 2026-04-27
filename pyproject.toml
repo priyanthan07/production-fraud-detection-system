@@ -29,13 +29,14 @@ dependencies = [
     "xgboost>=3.2.0",
 ]
 
-[tool.pytest.ini_options]
-pythonpath = ["."]
-testpaths = ["tests"]
-filterwarnings = [
-    "ignore::DeprecationWarning:google",
-    "ignore::DeprecationWarning:pkg_resources",
-    "ignore::DeprecationWarning:mlflow",
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+]
+all = [
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
 ]
 
 [build-system]
@@ -45,5 +46,16 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
 
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
 [tool.ruff.lint]
-ignore = ["E402"]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

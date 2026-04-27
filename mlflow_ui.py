@@ -1,25 +1,26 @@
 import subprocess
+import sys
 import yaml
 from pathlib import Path
 
-with open("configs/model_config.yaml") as f:
-    config = yaml.safe_load(f)
+def main():
+    config_path = Path("configs/model_config.yaml")
+    if config_path.exists():
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        uri = config.get("mlflow_tracking_uri", "sqlite:///mlflow.db")
+    else:
+        uri = "sqlite:///mlflow.db"
 
-tracking_uri = config["mlflow_tracking_uri"]
+    print(f"Starting MLflow UI against: {uri}")
+    print("Open: http://localhost:5000")
 
-print(f"Starting MLflow UI with backend: {tracking_uri}")
-print("Open http://localhost:5000 in your browser")
-print("Press Ctrl+C to stop")
+    subprocess.run([
+        sys.executable, "-m", "mlflow", "ui",
+        "--backend-store-uri", uri,
+        "--host", "0.0.0.0",
+        "--port", "5000",
+    ])
 
-mlflow_exe = Path(".venv/Scripts/mlflow.exe")
-
-subprocess.run(
-    [
-        str(mlflow_exe),
-        "ui",
-        "--backend-store-uri",
-        tracking_uri,
-        "--port",
-        "5000",
-    ]
-)
+if __name__ == "__main__":
+    main()

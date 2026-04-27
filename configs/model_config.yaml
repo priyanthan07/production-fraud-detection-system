@@ -59,3 +59,9 @@ processed_test_path: data/processed/test_features.parquet
 encodings_path: data/processed/encodings.pkl
 
 mlflow_tracking_uri: "postgresql://postgres:admin@localhost:5432/mlflow_tracking"
+
+# Redis online feature store
+# Use "redis" as host when running inside Docker Compose
+# Use "localhost" when running locally outside Docker
+redis_host: "localhost"
+redis_port: 6379

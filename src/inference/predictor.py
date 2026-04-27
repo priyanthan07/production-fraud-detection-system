@@ -231,7 +231,6 @@ class FraudPredictor:
         df = pd.DataFrame([raw_dict])
         df = df.where(df.notna(), other=np.nan)
         df = self._run_stateless_features(df)
-        print("After transaction_to_dataframe:", df.shape)
 
         # Step 2: Fetch velocity + aggregation features from custom Redis
         card_features  = feature_store.get_card_features(
@@ -252,7 +251,6 @@ class FraudPredictor:
         
         # Select model features in correct order
         X = self._select_model_features(df)
-        print("After select features:", X.shape)
 
         fraud_probability = float(self.model.predict_proba(X)[0, 1])
 

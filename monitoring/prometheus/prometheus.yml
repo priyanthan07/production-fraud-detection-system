@@ -9,10 +9,10 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets:
-          - "localhost:8000"
+          - "inference:8000"
         labels:
           service: "fraud_detection"
-          environment: "local"
+          environment: "docker"
   - job_name: "prometheus"
     scrape_interval: 30s
     static_configs:

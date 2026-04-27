@@ -21,6 +21,23 @@ services:
       retries: 5
     restart: unless-stopped
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    # appendonly yes — write every command to AOF log on disk
+    # Redis reconstructs in-memory state from AOF on restart
+    # Data survives docker compose down / restart
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   # ==========================================================
   # MLflow Tracking Server
   # ==========================================================
@@ -53,13 +70,18 @@ services:
       - mlflow_artifacts:/mlflow/artifacts
       # Mount processed data for encodings and feature columns
       - ./data/processed:/app/data/processed:ro
+      - ./data/production:/app/data/production
     depends_on:
       postgres:
         condition: service_healthy
       mlflow:
         condition: service_started
+      redis:
+        condition: service_healthy
     environment:
       MLFLOW_TRACKING_URI: "postgresql://postgres:admin@postgres:5432/mlflow_tracking"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
     restart: unless-stopped
 
   # ==========================================================
@@ -178,4 +200,5 @@ volumes:
   mlflow_artifacts:
   prometheus_data:
   grafana_data:
+  redis_data:
   

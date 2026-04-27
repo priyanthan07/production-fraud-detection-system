@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir uv \
     || pip install --no-cache-dir -e "."
 
 COPY src/ src/
+COPY feature_repo/ feature_repo/
 COPY configs/ configs/
 COPY monitoring/ monitoring/
 
