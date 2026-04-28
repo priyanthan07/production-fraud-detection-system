@@ -12,7 +12,6 @@ WORKDIR /mlflow
 RUN pip install --no-cache-dir \
     "mlflow>=2.10.0,<3.0.0" \
     "psycopg2-binary>=2.9.0" \
-    "protobuf>=3.20.0,<4.0.0" \
     "sqlalchemy==1.4.46"
 
 # Create artifact storage directory
