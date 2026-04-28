@@ -1,5 +1,6 @@
-import pandas as pd
 import logging
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,7 @@ def compute_time_features(df: pd.DataFrame) -> pd.DataFrame:
     # Time since last transaction per card1
     logger.info("Computing time since last transaction per card1...")
     df = df.sort_values("TransactionDT")
-    df["time_since_last_txn_card1"] = (
-        df.groupby("card1")["TransactionDT"].diff().fillna(-1)
-    )
+    df["time_since_last_txn_card1"] = df.groupby("card1")["TransactionDT"].diff().fillna(-1)
 
     # Days since card1 was first seen in the dataset
     logger.info("Computing days since card first seen...")
@@ -41,9 +40,7 @@ def compute_time_features(df: pd.DataFrame) -> pd.DataFrame:
     df["days_since_card_first_seen"] = (df["TransactionDT"] - card1_first_seen) / 86400
 
     # Is the transaction at night (between 11pm and 5am)
-    df["is_night_transaction"] = (
-        (df["hour_of_day"] >= 23) | (df["hour_of_day"] <= 5)
-    ).astype(int)
+    df["is_night_transaction"] = ((df["hour_of_day"] >= 23) | (df["hour_of_day"] <= 5)).astype(int)
 
     # Is the transaction on a weekend
     df["is_weekend"] = (df["day_of_week"] >= 5).astype(int)

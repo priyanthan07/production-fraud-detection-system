@@ -1,5 +1,6 @@
-import pandas as pd
 import logging
+
+import pandas as pd
 from lightgbm import LGBMClassifier, early_stopping, log_evaluation
 
 logger = logging.getLogger(__name__)
@@ -71,9 +72,7 @@ def train_lightgbm(
             log_evaluation(period=100),
         ]
     except ImportError:
-        logger.warning(
-            "LightGBM callbacks not available. Training without early stopping."
-        )
+        logger.warning("LightGBM callbacks not available. Training without early stopping.")
 
     model.fit(
         X_train,

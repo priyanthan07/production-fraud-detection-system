@@ -92,7 +92,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus/prometheus-docker.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     depends_on:
       - inference

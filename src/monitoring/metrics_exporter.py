@@ -1,5 +1,6 @@
 import logging
-from prometheus_client import Counter, Histogram, Gauge
+
+from prometheus_client import Counter, Gauge, Histogram
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +48,7 @@ BATCH_SIZE = Histogram(
 MODEL_VERSION = Gauge(
     name="fraud_model_version",
     documentation=(
-        "Currently loaded model version number. "
-        "Changes when a new model is promoted to Production."
+        "Currently loaded model version number. Changes when a new model is promoted to Production."
     ),
 )
 

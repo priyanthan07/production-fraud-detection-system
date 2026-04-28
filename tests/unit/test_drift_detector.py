@@ -2,13 +2,13 @@
 Tests for drift detection.
 """
 
-import pytest
-import pandas as pd
-import numpy as np
 from unittest.mock import patch
 
-from src.monitoring.drift_detector import compute_psi, DriftDetector
+import numpy as np
+import pandas as pd
+import pytest
 
+from src.monitoring.drift_detector import DriftDetector, compute_psi
 
 # ================================================================
 # Tests for compute_psi
@@ -39,9 +39,7 @@ class TestComputePSI:
         expected = pd.Series(np.random.normal(0, 1, 10000))
         actual = pd.Series(np.random.normal(3, 1, 10000))
         psi = compute_psi(expected, actual)
-        assert psi > 0.25, (
-            f"Very different distributions should have PSI > 0.25, got {psi}"
-        )
+        assert psi > 0.25, f"Very different distributions should have PSI > 0.25, got {psi}"
 
     def test_psi_is_non_negative(self):
         """PSI should always be >= 0."""
@@ -87,9 +85,7 @@ class TestComputePSI:
         expected = pd.Series(np.random.normal(0, 1, 10000))
         actual = pd.Series(np.random.normal(0.5, 1.2, 10000))
         psi = compute_psi(expected, actual)
-        assert 0.05 < psi < 0.50, (
-            f"Moderate shift PSI should be in 0.05-0.50, got {psi}"
-        )
+        assert 0.05 < psi < 0.50, f"Moderate shift PSI should be in 0.05-0.50, got {psi}"
 
 
 # ================================================================
@@ -198,9 +194,7 @@ class TestDriftDetector:
         assert result["summary"]["critical"] > 0
 
     @patch("src.monitoring.drift_detector.load_drift_config")
-    def test_insufficient_samples(
-        self, mock_load_config, mock_config, sample_baseline, tmp_path
-    ):
+    def test_insufficient_samples(self, mock_load_config, mock_config, sample_baseline, tmp_path):
         mock_config["drift_report_path"] = str(tmp_path)
         mock_config["drift_history_path"] = str(tmp_path / "history.csv")
         mock_config["min_sample_size"] = 500

@@ -1,6 +1,8 @@
+import logging
+
 import numpy as np
 import pandas as pd
-import logging
+
 from src.training.evaluator import compute_precision_recall_curve, evaluate_model
 
 logger = logging.getLogger(__name__)
@@ -46,8 +48,7 @@ def find_optimal_threshold(
 
         if len(valid) == 0:
             logger.warning(
-                f"No threshold achieves recall >= {min_recall}. "
-                f"Falling back to f1 strategy."
+                f"No threshold achieves recall >= {min_recall}. Falling back to f1 strategy."
             )
             return find_optimal_threshold(y_true, y_pred_proba, strategy="f1")
 
@@ -66,9 +67,7 @@ def find_optimal_threshold(
         logger.info(f" Recall: {best_recall:.4f}")
 
     else:
-        raise ValueError(
-            f"Unknown strategy: {strategy}. Choose 'f1' or 'recall_constrained'."
-        )
+        raise ValueError(f"Unknown strategy: {strategy}. Choose 'f1' or 'recall_constrained'.")
 
     return float(optimal_threshold)
 

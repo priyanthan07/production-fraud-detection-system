@@ -1,9 +1,10 @@
 import logging
+import sys
+from pathlib import Path
+
 import mlflow
 import yaml
-import sys
 from mlflow.tracking import MlflowClient
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -151,9 +152,7 @@ def reject_staging(
     Archive a Staging model that failed quality gates. Adds a rejection tag so the reason is visible in the MLflow UI.
     """
 
-    logger.warning(
-        f"{MODEL_NAME} version {version} rejected from Staging. Reason: {reason}"
-    )
+    logger.warning(f"{MODEL_NAME} version {version} rejected from Staging. Reason: {reason}")
 
     client.set_model_version_tag(
         name=MODEL_NAME,
@@ -219,9 +218,7 @@ def run_promotion_workflow(
     logger.info("Metrics from training run:")
     for name, value in metrics.items():
         if name in QUALITY_GATES:
-            logger.info(
-                f"  {name}: {value:.4f} (gate requires >= {QUALITY_GATES[name]})"
-            )
+            logger.info(f"  {name}: {value:.4f} (gate requires >= {QUALITY_GATES[name]})")
 
     # Step 4: Run quality gates
     gates_passed, gate_report = check_quality_gates(metrics)
@@ -238,16 +235,13 @@ def run_promotion_workflow(
     if gates_passed:
         promote_to_production(client, version)
         promoted = True
-        logger.info(
-            f"Promotion successful. {MODEL_NAME} version {version} is now serving traffic."
-        )
+        logger.info(f"Promotion successful. {MODEL_NAME} version {version} is now serving traffic.")
 
     else:
         failed_gates = [name for name, r in gate_report.items() if not r["passed"]]
 
         reason = f"Failed quality gates: {', '.join(failed_gates)}. " + " | ".join(
-            f"{name}: got {gate_report[name]['actual']}, "
-            f"needed >= {gate_report[name]['required']}"
+            f"{name}: got {gate_report[name]['actual']}, needed >= {gate_report[name]['required']}"
             for name in failed_gates
         )
         reject_staging(client, version, reason)
@@ -320,8 +314,7 @@ def list_all_versions() -> None:
     for v in versions:
         run_id_short = v.run_id[:8] + "..."
         logger.info(
-            f"{v.version:<10} {v.current_stage:<15} "
-            f"{run_id_short:<12} {v.creation_timestamp}"
+            f"{v.version:<10} {v.current_stage:<15} {run_id_short:<12} {v.creation_timestamp}"
         )
 
 

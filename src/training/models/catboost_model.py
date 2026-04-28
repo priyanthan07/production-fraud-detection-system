@@ -1,5 +1,6 @@
-import pandas as pd
 import logging
+
+import pandas as pd
 from catboost import CatBoostClassifier
 
 logger = logging.getLogger(__name__)

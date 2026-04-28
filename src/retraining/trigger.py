@@ -1,11 +1,11 @@
+import argparse
 import logging
 import subprocess
 import sys
-import argparse
-import pandas as pd
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
+import pandas as pd
 
 from src.monitoring.drift_detector import DriftDetector
 from src.registry.model_manager import run_promotion_workflow as promote
@@ -81,9 +81,7 @@ def run_training_pipeline() -> dict:
                 "stderr": result.stderr[-500:] if result.stderr else "",
             }
         else:
-            logger.error(
-                f"Training pipeline failed with return code {result.returncode}"
-            )
+            logger.error(f"Training pipeline failed with return code {result.returncode}")
             logger.error(f"stderr: {result.stderr[-1000:]}")
             return {
                 "success": False,
@@ -122,9 +120,7 @@ def run_promotion_workflow() -> dict:
                 f"Model version {result['version']} promoted to Production. Threshold: {result['optimal_threshold']}"
             )
         else:
-            logger.warning(
-                f"Model version {result['version']} failed quality gates. Not promoted."
-            )
+            logger.warning(f"Model version {result['version']} failed quality gates. Not promoted.")
 
         return {
             "success": True,
@@ -160,16 +156,10 @@ def log_retraining_event(
         "drift_reason": drift_result.get("reason", ""),
         "drift_fraction": (drift_result.get("summary", {}).get("drift_fraction", None)),
         "training_triggered": training_result is not None,
-        "training_success": (
-            training_result.get("success", False) if training_result else False
-        ),
+        "training_success": (training_result.get("success", False) if training_result else False),
         "promotion_triggered": promotion_result is not None,
-        "promoted": (
-            promotion_result.get("promoted", False) if promotion_result else False
-        ),
-        "new_model_version": (
-            promotion_result.get("version", None) if promotion_result else None
-        ),
+        "promoted": (promotion_result.get("promoted", False) if promotion_result else False),
+        "new_model_version": (promotion_result.get("version", None) if promotion_result else None),
     }
 
     row_df = pd.DataFrame([row])

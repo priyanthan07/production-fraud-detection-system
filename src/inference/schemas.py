@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import Optional, List
+
+from typing import List, Optional
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -195,8 +197,7 @@ class PredictionOutput(BaseModel):
     is_fraud: bool = Field(
         ...,
         description=(
-            "True if fraud_probability >= threshold_used. "
-            "This is the actionable decision."
+            "True if fraud_probability >= threshold_used. This is the actionable decision."
         ),
     )
     risk_level: str = Field(
@@ -217,9 +218,7 @@ class BatchPredictionOutput(BaseModel):
     predictions: List[PredictionOutput]
     total_transactions: int
     flagged_as_fraud: int
-    fraud_rate_in_batch: float = Field(
-        ..., description="Fraction of batch flagged as fraud"
-    )
+    fraud_rate_in_batch: float = Field(..., description="Fraction of batch flagged as fraud")
     model_version: str
 
 

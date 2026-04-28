@@ -1,5 +1,6 @@
-import pandas as pd
 import logging
+
+import pandas as pd
 from xgboost import XGBClassifier
 
 logger = logging.getLogger(__name__)

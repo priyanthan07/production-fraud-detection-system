@@ -1,6 +1,7 @@
-import pandas as pd
-import numpy as np
 import logging
+
+import numpy as np
+import pandas as pd
 from sklearn.model_selection import KFold
 
 logger = logging.getLogger(__name__)
@@ -41,9 +42,9 @@ def _compute_smoothed_means(
     stats = df.groupby(col)[target_col].agg(["mean", "count"]).reset_index()
 
     stats.columns = [col, "cat_mean", "cat_count"]
-    stats["smoothed_mean"] = (
-        stats["cat_count"] * stats["cat_mean"] + smoothing * global_mean
-    ) / (stats["cat_count"] + smoothing)
+    stats["smoothed_mean"] = (stats["cat_count"] * stats["cat_mean"] + smoothing * global_mean) / (
+        stats["cat_count"] + smoothing
+    )
 
     return stats.set_index(col)["smoothed_mean"].to_dict()
 
@@ -105,9 +106,7 @@ def fit_target_encoder(
         # Store leak-free encoded column in df (used for model training)
         df[f"{col}_encoded"] = encoded
 
-        inference_means = _compute_smoothed_means(
-            df, col, target_col, global_mean, smoothing
-        )
+        inference_means = _compute_smoothed_means(df, col, target_col, global_mean, smoothing)
 
         encodings[col] = {
             "global_mean": global_mean,

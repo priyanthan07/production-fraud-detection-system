@@ -1,6 +1,7 @@
-import pandas as pd
 import logging
 from pathlib import Path
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +37,7 @@ def load_raw_data(data_dir: str) -> pd.DataFrame:
 
     # Sanity check: merged row count must equal transaction row count
     assert len(merged) == len(transactions), (
-        f"Merge produced unexpected row count. "
-        f"Expected {len(transactions)}, got {len(merged)}"
+        f"Merge produced unexpected row count. Expected {len(transactions)}, got {len(merged)}"
     )
 
     logger.info("Data loading complete.")

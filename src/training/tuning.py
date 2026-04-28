@@ -1,11 +1,12 @@
-import pandas as pd
 import logging
+
 import optuna
+import pandas as pd
 from sklearn.metrics import average_precision_score
 
-from src.training.models.xgboost_model import train_xgboost
-from src.training.models.lightgbm_model import train_lightgbm
 from src.training.models.catboost_model import train_catboost
+from src.training.models.lightgbm_model import train_lightgbm
+from src.training.models.xgboost_model import train_xgboost
 
 logger = logging.getLogger(__name__)
 

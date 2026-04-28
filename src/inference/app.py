@@ -5,23 +5,22 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import Response
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from src.inference.predictor import predictor
 from src.inference.schemas import (
-    TransactionInput,
-    BatchTransactionInput,
-    PredictionOutput,
     BatchPredictionOutput,
+    BatchTransactionInput,
     HealthResponse,
+    PredictionOutput,
+    TransactionInput,
 )
-
 from src.monitoring.metrics_exporter import (
-    record_prediction,
+    ACTIVE_REQUESTS,
     record_batch_prediction,
     record_error,
+    record_prediction,
     set_model_version,
-    ACTIVE_REQUESTS,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -140,9 +139,7 @@ async def predict_single(transaction: TransactionInput):
             risk_level="LOW",
         )
 
-        logger.error(
-            f"Prediction failed for TransactionID {transaction.TransactionID}: {e}"
-        )
+        logger.error(f"Prediction failed for TransactionID {transaction.TransactionID}: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Prediction failed: {str(e)}",

@@ -1,12 +1,13 @@
 # Compares production data against the training baseline to detect data drift using PSI (Population Stability Index).
 
-import pandas as pd
-import numpy as np
-import logging
-import yaml
 import json
-from pathlib import Path
+import logging
 from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -165,15 +166,11 @@ class DriftDetector:
 
         for feature in monitored:
             if feature not in self.baseline_df.columns:
-                logger.warning(
-                    f"Feature '{feature}' not found in baseline data. Skipping."
-                )
+                logger.warning(f"Feature '{feature}' not found in baseline data. Skipping.")
                 continue
 
             if feature not in self.production_df.columns:
-                logger.warning(
-                    f"Feature '{feature}' not found in production data. Skipping."
-                )
+                logger.warning(f"Feature '{feature}' not found in production data. Skipping.")
                 continue
 
             psi = compute_psi(
@@ -194,9 +191,7 @@ class DriftDetector:
             }
 
             if status != "OK":
-                logger.warning(
-                    f"Drift detected in '{feature}': PSI={psi:.4f} ({status})"
-                )
+                logger.warning(f"Drift detected in '{feature}': PSI={psi:.4f} ({status})")
 
         return results
 
@@ -220,19 +215,13 @@ class DriftDetector:
         }
 
         if target_col in self.baseline_df.columns:
-            result["baseline_fraud_rate"] = round(
-                float(self.baseline_df[target_col].mean()), 4
-            )
+            result["baseline_fraud_rate"] = round(float(self.baseline_df[target_col].mean()), 4)
 
         if target_col in self.production_df.columns:
-            result["production_fraud_rate"] = round(
-                float(self.production_df[target_col].mean()), 4
-            )
+            result["production_fraud_rate"] = round(float(self.production_df[target_col].mean()), 4)
 
             if result["baseline_fraud_rate"] is not None:
-                change = abs(
-                    result["production_fraud_rate"] - result["baseline_fraud_rate"]
-                )
+                change = abs(result["production_fraud_rate"] - result["baseline_fraud_rate"])
 
                 result["absolute_change"] = round(change, 4)
                 result["drifted"] = change > threshold
@@ -294,24 +283,16 @@ class DriftDetector:
 
         # Aggregate results
         total_features = len(feature_drift)
-        critical_features = sum(
-            1 for r in feature_drift.values() if r["status"] == "CRITICAL"
-        )
+        critical_features = sum(1 for r in feature_drift.values() if r["status"] == "CRITICAL")
 
-        warning_features = sum(
-            1 for r in feature_drift.values() if r["status"] == "WARNING"
-        )
+        warning_features = sum(1 for r in feature_drift.values() if r["status"] == "WARNING")
         ok_features = total_features - critical_features - warning_features
 
-        drift_fraction = (
-            critical_features / total_features if total_features > 0 else 0.0
-        )
+        drift_fraction = critical_features / total_features if total_features > 0 else 0.0
 
         # Decision: should we retrain?
         fraction_threshold = self.config["drift_feature_fraction"]
-        should_retrain = drift_fraction >= fraction_threshold or target_drift.get(
-            "drifted", False
-        )
+        should_retrain = drift_fraction >= fraction_threshold or target_drift.get("drifted", False)
 
         # Build reason string
         reasons = []
@@ -321,9 +302,7 @@ class DriftDetector:
             )
 
         if target_drift.get("drifted", False):
-            reasons.append(
-                f"Target fraud rate shifted by {target_drift['absolute_change']:.4f}"
-            )
+            reasons.append(f"Target fraud rate shifted by {target_drift['absolute_change']:.4f}")
 
         reason = " AND ".join(reasons) if reasons else "No significant drift detected"
 

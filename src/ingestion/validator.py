@@ -1,14 +1,13 @@
-import pandas as pd
 import logging
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
 
-def validate_raw_data(
-    df: pd.DataFrame, report_dir: str = "data/validation_reports"
-) -> bool:
+def validate_raw_data(df: pd.DataFrame, report_dir: str = "data/validation_reports") -> bool:
     """
     Run data validation checks on the merged dataset.
     Returns True if all checks pass.
@@ -78,9 +77,7 @@ def validate_raw_data(
     if "isFraud" in df.columns:
         fraud_rate = df["isFraud"].mean()
         if fraud_rate < 0.01 or fraud_rate > 0.10:
-            warnings.append(
-                f"Fraud rate {fraud_rate:.4f} is outside expected range 0.01 to 0.10"
-            )
+            warnings.append(f"Fraud rate {fraud_rate:.4f} is outside expected range 0.01 to 0.10")
         else:
             logger.info(f"Check 5 passed: Fraud rate is {fraud_rate:.4f}")
 
@@ -100,9 +97,7 @@ def validate_raw_data(
     if "TransactionAmt" in df.columns:
         null_rate = df["TransactionAmt"].isnull().mean()
         if null_rate > 0.05:
-            errors.append(
-                f"TransactionAmt null rate {null_rate:.4f} exceeds 5% threshold"
-            )
+            errors.append(f"TransactionAmt null rate {null_rate:.4f} exceeds 5% threshold")
         else:
             logger.info(f"Check 7 passed: TransactionAmt null rate is {null_rate:.4f}")
 
@@ -149,9 +144,7 @@ def validate_raw_data(
                 f"check the merge on TransactionID"
             )
         else:
-            logger.info(
-                f"Check 11 passed: Identity match rate is {identity_match_rate:.4f}"
-            )
+            logger.info(f"Check 11 passed: Identity match rate is {identity_match_rate:.4f}")
 
     # ----------------------------------------------------------------
     # Write validation report

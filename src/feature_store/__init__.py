@@ -1,5 +1,5 @@
-from src.feature_store.online_store import feature_store, OnlineFeatureStore
-from src.feature_store.feast_store import feast_store, FeastFeatureStore
+from src.feature_store.feast_store import FeastFeatureStore, feast_store
+from src.feature_store.online_store import OnlineFeatureStore, feature_store
 
 __all__ = [
     "feature_store",

@@ -1,12 +1,12 @@
 import argparse
 import logging
 import time
-import pandas as pd
-import numpy as np
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 from src.inference.predictor import FraudPredictor
-from src.inference.schemas import compute_risk_level
 
 logging.basicConfig(
     level=logging.INFO,
@@ -85,34 +85,35 @@ def score_chunk(
         try:
             # Build TransactionInput from row — only pass known fields
             # Unknown fields (extra V columns etc.) are handled by extra="allow"
-            row_dict = {
-                k: (None if pd.isna(v) else v)
-                for k, v in row.items()
-            }
+            row_dict = {k: (None if pd.isna(v) else v) for k, v in row.items()}
 
             txn = TransactionInput(**row_dict)
             result = predictor.predict_single(txn)
 
-            results.append({
-                "TransactionID":    result.TransactionID,
-                "fraud_probability": result.fraud_probability,
-                "is_fraud":         result.is_fraud,
-                "risk_level":       result.risk_level,
-                "threshold_used":   result.threshold_used,
-                "model_version":    result.model_version,
-            })
+            results.append(
+                {
+                    "TransactionID": result.TransactionID,
+                    "fraud_probability": result.fraud_probability,
+                    "is_fraud": result.is_fraud,
+                    "risk_level": result.risk_level,
+                    "threshold_used": result.threshold_used,
+                    "model_version": result.model_version,
+                }
+            )
 
         except Exception as e:
             txn_id = row.get("TransactionID", "unknown")
             logger.error(f"Failed to score TransactionID={txn_id}: {e}")
-            results.append({
-                "TransactionID":    row.get("TransactionID"),
-                "fraud_probability": np.nan,
-                "is_fraud":         None,
-                "risk_level":       "ERROR",
-                "threshold_used":   predictor.threshold,
-                "model_version":    str(predictor.model_version),
-            })
+            results.append(
+                {
+                    "TransactionID": row.get("TransactionID"),
+                    "fraud_probability": np.nan,
+                    "is_fraud": None,
+                    "risk_level": "ERROR",
+                    "threshold_used": predictor.threshold,
+                    "model_version": str(predictor.model_version),
+                }
+            )
 
     return pd.DataFrame(results)
 
@@ -142,7 +143,7 @@ def run_batch_scoring(
 
     for i in range(0, total_rows, chunk_size):
         chunk_num = i // chunk_size + 1
-        chunk     = df.iloc[i : i + chunk_size]
+        chunk = df.iloc[i : i + chunk_size]
 
         logger.info(
             f"Scoring chunk {chunk_num}/{n_chunks} "
@@ -160,21 +161,21 @@ def run_batch_scoring(
         results_df.to_csv(output_path, index=False)
 
     elapsed = time.time() - start_time
-    scored  = results_df["fraud_probability"].notna().sum()
+    scored = results_df["fraud_probability"].notna().sum()
     flagged = results_df["is_fraud"].sum()
-    errors  = results_df["risk_level"].eq("ERROR").sum()
+    errors = results_df["risk_level"].eq("ERROR").sum()
 
     summary = {
-        "total_rows":           total_rows,
-        "successfully_scored":  int(scored),
-        "errors":               int(errors),
-        "flagged_as_fraud":     int(flagged),
-        "fraud_rate":           round(float(flagged / scored) if scored > 0 else 0, 4),
-        "elapsed_seconds":      round(elapsed, 1),
-        "rows_per_second":      round(total_rows / elapsed, 0),
-        "output_path":          str(output_path),
-        "model_version":        str(p.model_version),
-        "threshold":            p.threshold,
+        "total_rows": total_rows,
+        "successfully_scored": int(scored),
+        "errors": int(errors),
+        "flagged_as_fraud": int(flagged),
+        "fraud_rate": round(float(flagged / scored) if scored > 0 else 0, 4),
+        "elapsed_seconds": round(elapsed, 1),
+        "rows_per_second": round(total_rows / elapsed, 0),
+        "output_path": str(output_path),
+        "model_version": str(p.model_version),
+        "threshold": p.threshold,
     }
 
     logger.info("=" * 50)
@@ -187,13 +188,11 @@ def run_batch_scoring(
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Batch score transactions for fraud detection."
-    )
-    parser.add_argument("--input",      required=True)
-    parser.add_argument("--identity",   default=None)
-    parser.add_argument("--output",     required=True)
-    parser.add_argument("--model-uri",  default=None)
+    parser = argparse.ArgumentParser(description="Batch score transactions for fraud detection.")
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--identity", default=None)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--model-uri", default=None)
     parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE)
     return parser.parse_args()
 
@@ -201,9 +200,9 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     run_batch_scoring(
-        input_path    = args.input,
-        identity_path = args.identity,
-        output_path   = args.output,
-        model_uri     = args.model_uri,
-        chunk_size    = args.chunk_size,
+        input_path=args.input,
+        identity_path=args.identity,
+        output_path=args.output,
+        model_uri=args.model_uri,
+        chunk_size=args.chunk_size,
     )

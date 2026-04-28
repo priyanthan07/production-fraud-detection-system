@@ -1,21 +1,20 @@
+import logging
+
 import numpy as np
 import pandas as pd
-import logging
 from sklearn.metrics import (
-    roc_auc_score,
     average_precision_score,
-    precision_score,
-    recall_score,
     f1_score,
     precision_recall_curve,
+    precision_score,
+    recall_score,
+    roc_auc_score,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def evaluate_model(
-    y_true: np.ndarray, y_pred_proba: np.ndarray, threshold: float = 0.5
-) -> dict:
+def evaluate_model(y_true: np.ndarray, y_pred_proba: np.ndarray, threshold: float = 0.5) -> dict:
     """
     Compute all evaluation metrics for a fraud detection model.
 
@@ -29,9 +28,7 @@ def evaluate_model(
     """
 
     if len(np.unique(y_true)) < 2:
-        raise ValueError(
-            "y_true must contain both classes (0 and 1). Check your validation split."
-        )
+        raise ValueError("y_true must contain both classes (0 and 1). Check your validation split.")
 
     # Convert probabilities to binary predictions using threshold
     y_pred = (y_pred_proba >= threshold).astype(int)

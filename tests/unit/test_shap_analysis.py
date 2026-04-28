@@ -1,21 +1,21 @@
-import pytest
-import numpy as np
-import pandas as pd
 import os
 import tempfile
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pandas as pd
+import pytest
 from sklearn.ensemble import GradientBoostingClassifier
 
 from src.explainability.shap_analysis import (
-    compute_shap_values,
+    MAX_WATERFALL_PLOTS,
     build_shap_feature_importance,
-    plot_summary_beeswarm,
+    compute_shap_values,
     plot_summary_bar,
+    plot_summary_beeswarm,
     plot_waterfall,
     run_shap_analysis,
-    MAX_WATERFALL_PLOTS,
 )
-
 
 # ----------------------------------------------------------------
 # Fixtures
@@ -217,9 +217,7 @@ def test_run_shap_analysis_logs_top10_metrics(mock_mlflow):
     X, y = make_sample_data(n=50, n_features=10, fraud_rate=0.2)
     model = make_trained_model(X, y)
     run_shap_analysis(model, "test_model", X, y)
-    metric_calls = [
-        c for c in mock_mlflow.log_metric.call_args_list if "shap_importance" in str(c)
-    ]
+    metric_calls = [c for c in mock_mlflow.log_metric.call_args_list if "shap_importance" in str(c)]
     assert len(metric_calls) == 10
 
 

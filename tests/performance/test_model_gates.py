@@ -1,5 +1,6 @@
-import pytest
 import numpy as np
+import pytest
+
 from src.training.evaluator import evaluate_model
 from src.training.threshold_optimizer import find_optimal_threshold
 
@@ -102,12 +103,8 @@ def test_good_model_beats_minimum_thresholds():
     assert metrics["auc_roc"] >= MIN_AUC_ROC, (
         f"AUC-ROC {metrics['auc_roc']} below minimum {MIN_AUC_ROC}"
     )
-    assert metrics["auc_pr"] >= MIN_AUC_PR, (
-        f"AUC-PR {metrics['auc_pr']} below minimum {MIN_AUC_PR}"
-    )
-    assert metrics["recall"] >= MIN_RECALL, (
-        f"Recall {metrics['recall']} below minimum {MIN_RECALL}"
-    )
+    assert metrics["auc_pr"] >= MIN_AUC_PR, f"AUC-PR {metrics['auc_pr']} below minimum {MIN_AUC_PR}"
+    assert metrics["recall"] >= MIN_RECALL, f"Recall {metrics['recall']} below minimum {MIN_RECALL}"
 
 
 def test_random_model_fails_quality_gates():
@@ -125,6 +122,4 @@ def test_random_model_fails_quality_gates():
         and metrics["auc_pr"] >= MIN_AUC_PR
         and metrics["recall"] >= MIN_RECALL
     )
-    assert not passes_all, (
-        "Random model passed all quality gates. Gates are too lenient."
-    )
+    assert not passes_all, "Random model passed all quality gates. Gates are too lenient."

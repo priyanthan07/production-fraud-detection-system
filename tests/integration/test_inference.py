@@ -18,10 +18,13 @@ Run:
     pytest tests/integration/test_inference.py -v
 """
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
 from fastapi.testclient import TestClient
+
+from src.inference.schemas import PredictionOutput
 
 # ----------------------------------------------------------------
 # Fixtures — minimal valid transaction data
@@ -122,13 +125,6 @@ def make_mock_predictor(fraud_prob: float = 0.15):
     mock_predictor.feature_columns = ["TransactionAmt", "card1", "C1"]
 
     return mock_predictor
-
-
-# ----------------------------------------------------------------
-# App fixture with mocked predictor
-# ----------------------------------------------------------------
-
-from src.inference.schemas import PredictionOutput
 
 
 @pytest.fixture

@@ -1,33 +1,32 @@
-import pandas as pd
 import logging
 import pickle
-import yaml
+import warnings
 from pathlib import Path
+
 import mlflow
 import mlflow.sklearn
+import pandas as pd
+import yaml
 from mlflow.models import infer_signature
-import warnings
+
+from src.explainability.shap_analysis import run_shap_analysis
+from src.features.pipeline import build_features
+from src.ingestion.loader import load_raw_data
+from src.ingestion.validator import validate_raw_data
+from src.training.evaluator import evaluate_model
+from src.training.models.catboost_model import train_catboost
+from src.training.models.lightgbm_model import train_lightgbm
+from src.training.models.xgboost_model import train_xgboost
+from src.training.threshold_optimizer import find_optimal_threshold
 
 # Suppress MLflow schema warnings about integer columns
-warnings.filterwarnings(
-    "ignore", message="Hint: Inferred schema contains integer column"
-)
+warnings.filterwarnings("ignore", message="Hint: Inferred schema contains integer column")
 
 # Suppress MLflow pip requirements warning
 logging.getLogger("mlflow.utils.environment").setLevel(logging.ERROR)
 
 # Suppress MLflow model metadata warning
 logging.getLogger("mlflow.models.model").setLevel(logging.ERROR)
-
-from src.ingestion.loader import load_raw_data
-from src.ingestion.validator import validate_raw_data
-from src.features.pipeline import build_features
-from src.training.models.xgboost_model import train_xgboost
-from src.training.models.lightgbm_model import train_lightgbm
-from src.training.models.catboost_model import train_catboost
-from src.training.evaluator import evaluate_model
-from src.training.threshold_optimizer import find_optimal_threshold
-from src.explainability.shap_analysis import run_shap_analysis
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -258,9 +257,7 @@ def main():
             )
 
             # Log model
-            signature = infer_signature(
-                X_val_float, model.predict_proba(X_val_float)[:, 1]
-            )
+            signature = infer_signature(X_val_float, model.predict_proba(X_val_float)[:, 1])
 
             mlflow.sklearn.log_model(
                 model,
@@ -290,9 +287,7 @@ def main():
                 shap_artifacts = {}
 
             mlflow.log_artifact(feature_list_path, artifact_path="features")
-            mlflow.log_artifact(
-                str(Path(config["encodings_path"])), artifact_path="features"
-            )
+            mlflow.log_artifact(str(Path(config["encodings_path"])), artifact_path="features")
 
             results[model_name] = {
                 "model": model,

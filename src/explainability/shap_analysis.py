@@ -1,15 +1,16 @@
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
 
 matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt
-import shap
-import mlflow
 import logging
 import tempfile
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import mlflow
+import shap
 
 logger = logging.getLogger(__name__)
 

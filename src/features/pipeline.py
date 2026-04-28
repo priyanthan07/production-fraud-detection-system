@@ -1,13 +1,15 @@
-import pandas as pd
 import logging
-from src.features.velocity_features import compute_velocity_features
+
+import pandas as pd
+
+from src.features.categorical_encoder import (
+    CATEGORICAL_COLUMNS,
+    apply_target_encoder,
+    fit_target_encoder,
+)
 from src.features.time_features import compute_time_features
 from src.features.user_aggregations import compute_user_aggregations
-from src.features.categorical_encoder import (
-    fit_target_encoder,
-    apply_target_encoder,
-    CATEGORICAL_COLUMNS,
-)
+from src.features.velocity_features import compute_velocity_features
 
 logger = logging.getLogger(__name__)
 

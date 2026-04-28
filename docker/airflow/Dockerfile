@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir \
     "optuna>=3.0.0" \
     "pyarrow>=14.0.0"\
     "redis>=5.0.0" \
-    "feast[redis]>=0.36.0" \
+    "feast[redis]>=0.36.0"
 
 # Copy project source code
 COPY src/ /opt/airflow/project/src/

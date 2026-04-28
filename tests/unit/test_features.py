@@ -1,10 +1,11 @@
 import pandas as pd
+
+from src.features.categorical_encoder import (
+    apply_target_encoder,
+    fit_target_encoder,
+)
 from src.features.time_features import compute_time_features
 from src.features.user_aggregations import compute_user_aggregations
-from src.features.categorical_encoder import (
-    fit_target_encoder,
-    apply_target_encoder,
-)
 from src.features.velocity_features import compute_velocity_features
 
 
@@ -267,8 +268,7 @@ def test_encoded_column_names_match_between_train_and_inference():
     inference_cols = sorted([c for c in inference_df.columns if c.endswith("_encoded")])
 
     assert training_cols == inference_cols, (
-        f"Training columns {training_cols} do not match "
-        f"inference columns {inference_cols}"
+        f"Training columns {training_cols} do not match inference columns {inference_cols}"
     )
 
 

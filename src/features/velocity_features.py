@@ -1,6 +1,7 @@
-import pandas as pd
-import numpy as np
 import logging
+
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +102,7 @@ def _velocity_for_key(df: pd.DataFrame, group_key: str) -> pd.DataFrame:
         ]
 
         df = df.drop(
-            columns=[
-                c
-                for c in df.columns
-                if group_key in c and ("count" in c or "amt_sum" in c)
-            ]
+            columns=[c for c in df.columns if group_key in c and ("count" in c or "amt_sum" in c)]
         )
 
         df = df.merge(result_df[cols_to_merge], on="TransactionID", how="left")

@@ -56,6 +56,10 @@ lint:
 	ruff check src/ tests/
 	ruff format src/ tests/ --check
 
+lint-fix:
+	ruff check src/ tests/ --fix
+	ruff format src/ tests/
+
 train:
 	python -m src.training.train
 

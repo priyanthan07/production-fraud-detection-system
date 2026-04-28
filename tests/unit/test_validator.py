@@ -1,5 +1,6 @@
-import pytest
 import pandas as pd
+import pytest
+
 from src.ingestion.validator import validate_raw_data
 
 
