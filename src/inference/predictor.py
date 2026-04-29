@@ -10,8 +10,8 @@ import pandas as pd
 import yaml
 from dotenv import load_dotenv
 from mlflow.tracking import MlflowClient
-
 from src.feature_store.feast_store import feast_store
+
 from src.feature_store.online_store import feature_store
 from src.features.categorical_encoder import apply_target_encoder
 from src.features.time_features import compute_time_features

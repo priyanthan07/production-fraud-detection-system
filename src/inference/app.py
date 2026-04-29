@@ -68,7 +68,7 @@ async def health_check():
         model_loaded=predictor._loaded,
         model_version=str(predictor.model_version or "none"),
         threshold=predictor.threshold,
-        redis_healthy=predictor._redis_ok
+        redis_healthy=predictor._redis_ok,
     )
 
 
