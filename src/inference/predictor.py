@@ -10,7 +10,6 @@ import pandas as pd
 import yaml
 from dotenv import load_dotenv
 from mlflow.tracking import MlflowClient
-from src.feature_store.feast_store import feast_store
 
 from src.feature_store.online_store import feature_store
 from src.features.categorical_encoder import apply_target_encoder
@@ -94,18 +93,6 @@ class FraudPredictor:
         except Exception as e:
             logger.info(f"Could not load from MLflow artifacts: {e}.")
 
-        # Connect to Feast feature store (static features via Redis)
-        try:
-            feast_store.connect()
-            logger.info("Feast feature store connected.")
-
-        except Exception as e:
-            logger.error(
-                f"Feast connection failed: {e}. "
-                f"Static features will be missing from Redis. "
-                f"Run: python scripts/feast_apply.py && python scripts/feast_materialize.py"
-            )
-
         # Connect to custom Redis feature store (velocity + aggregations)
         redis_host = os.environ.get("REDIS_HOST") or self.config.get("redis_host", "localhost")
         redis_port = int(os.environ.get("REDIS_PORT") or self.config.get("redis_port", 6379))
@@ -176,7 +163,7 @@ class FraudPredictor:
         """
         Compute features that require only the current transaction row.
 
-        Computed locally — no Redis, no Feast:
+        Computed locally — no Redis:
         - hour_of_day, day_of_week, days_since_start
         - is_night_transaction, is_weekend
         - ProductCD_encoded, card6_encoded, etc. (from encodings.pkl)
