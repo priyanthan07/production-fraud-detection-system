@@ -35,7 +35,6 @@ class FraudPredictor:
         self.config = None
         self._loaded = False
         self._redis_ok = False
-        self._feast_ok = False
 
     def load(self, model_uri: str = None) -> None:
         """
@@ -98,11 +97,9 @@ class FraudPredictor:
         # Connect to Feast feature store (static features via Redis)
         try:
             feast_store.connect()
-            self._feast_ok = True
             logger.info("Feast feature store connected.")
 
         except Exception as e:
-            self._feast_ok = False
             logger.error(
                 f"Feast connection failed: {e}. "
                 f"Static features will be missing from Redis. "
@@ -132,7 +129,6 @@ class FraudPredictor:
             f"FraudPredictor ready. "
             f"Model: {self.model_version}, "
             f"Threshold: {self.threshold:.4f}, "
-            f"Feast: {'OK' if self._feast_ok else 'UNAVAILABLE'}, "
             f"Redis: {'OK' if self._redis_ok else 'UNAVAILABLE'}"
         )
 

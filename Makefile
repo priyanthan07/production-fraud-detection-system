@@ -1,6 +1,6 @@
 .PHONY: help install test lint serve train promote mlflow-ui \
         docker-up docker-down docker-build clean drift retrain \
-        bootstrap-redis feast-apply feast-materialize feast-ui
+        bootstrap-redis
 
 help:
 	@echo "============================================"
@@ -21,10 +21,7 @@ help:
 	@echo "    retrain              Force retrain regardless of drift"
 	@echo ""
 	@echo "  Feature Store:"
-	@echo "    feast-apply          Register feature definitions with Feast"
-	@echo "    feast-materialize    Push batch features from parquet to Redis via Feast"
 	@echo "    bootstrap-redis      Warm Redis velocity/aggregation features from training data"
-	@echo "    feast-ui             Open Feast UI in browser"
 	@echo ""
 	@echo "  Serving:"
 	@echo "    serve                Start FastAPI inference server"
@@ -72,17 +69,8 @@ drift:
 retrain:
 	python -m src.retraining.trigger --force
 
-feast-apply:
-	python scripts/feast_apply.py
-
-feast-materialize:
-	python scripts/feast_materialize.py
-
 bootstrap-redis:
 	python scripts/bootstrap_redis.py
-
-feast-ui:
-	cd feature_repo && feast ui
 
 serve:
 	uvicorn src.inference.app:app --host 0.0.0.0 --port 8000

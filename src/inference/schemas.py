@@ -230,7 +230,6 @@ class HealthResponse(BaseModel):
     model_version: str
     threshold: float
     redis_healthy: bool = False
-    feast_healthy: bool = False
 
 
 def compute_risk_level(probability: float) -> str:
