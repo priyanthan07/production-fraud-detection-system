@@ -159,6 +159,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
       MLFLOW_TRACKING_URI: "postgresql://postgres:admin@postgres:5432/mlflow_tracking"
+      PROJECT_ROOT: "/opt/airflow/project"
     volumes:
       - ./airflow/dags:/opt/airflow/dags:ro
       - ./data:/opt/airflow/project/data
@@ -182,6 +183,7 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       MLFLOW_TRACKING_URI: "postgresql://postgres:admin@postgres:5432/mlflow_tracking"
+      PROJECT_ROOT: "/opt/airflow/project"
     volumes:
       - ./airflow/dags:/opt/airflow/dags:ro
       - ./data:/opt/airflow/project/data

@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -12,11 +14,16 @@ default_args = {
     "email_on_failure": False,
     "email_on_retry": False,
     "retries": 0,
-    # No retries for training — if it fails we want to investigate
-    # the failure manually, not blindly retry. Training is expensive
-    # and a retry with the same data will likely fail the same way.
     "retry_delay": timedelta(minutes=10),
 }
+
+def _project_root() -> Path:
+    """
+    Return the project root path.
+    Reads PROJECT_ROOT env var — set in docker-compose.yml for Airflow containers.
+    Falls back to the hardcoded path so existing deployments are unaffected.
+    """
+    return Path(os.environ.get("PROJECT_ROOT", "/opt/airflow/project"))
 
 
 def validate_data(**context):
@@ -30,16 +37,14 @@ def validate_data(**context):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    sys.path.insert(0, "/opt/airflow/project")
+    project_root = _project_root()                    # FIX: keep as Path, not str
+    sys.path.insert(0, str(project_root))
 
     from src.ingestion.loader import load_raw_data
     from src.ingestion.validator import validate_raw_data
 
-    project_root = Path("/opt/airflow/project")
-    raw_data_path = str(project_root / "data/raw")
-
     logger.info("Loading raw data...")
-    raw_df = load_raw_data("data/raw")
+    raw_df = load_raw_data(str(project_root / "data/raw"))
 
     logger.info("Validating raw data...")
     validate_raw_data(raw_df)
@@ -75,9 +80,9 @@ def prepare_training_data(**context):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    sys.path.insert(0, "/opt/airflow/project")
-
-    project_root          = Path("/opt/airflow/project")
+    project_root = _project_root()                    # FIX: keep as Path
+    sys.path.insert(0, str(project_root))
+    
     scored_features_path  = project_root / "data/production/scored_features.parquet"
     labels_path           = project_root / "data/production/labels.parquet"
     original_train_path   = project_root / "data/processed/train_features.parquet"
@@ -193,12 +198,14 @@ def run_training(**context):
     ) or 0
     logger.info(f"Training with {new_labeled_count:,} new labeled rows merged in.")
 
+    project_root = _project_root()
+    
     result = subprocess.run(
         [sys.executable, "-m", "src.training.train"],
         capture_output=True,
         text=True,
         timeout=7200,
-        cwd="/opt/airflow/project",
+        cwd=str(project_root),
     )
 
     if result.returncode != 0:
@@ -222,7 +229,7 @@ def promote_model(**context):
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger(__name__)
 
-    sys.path.insert(0, "/opt/airflow/project")
+    sys.path.insert(0, str(_project_root()))
 
     from src.registry.model_manager import run_promotion_workflow
 
@@ -267,7 +274,7 @@ def save_new_baseline(**context):
         return
 
     # Use absolute path based on project root mounted in container
-    project_root = Path("/opt/airflow/project")
+    project_root = _project_root()
     source = project_root / "data/processed/train_features.parquet"
     baseline = project_root / "data/processed/drift_baseline.parquet"
 

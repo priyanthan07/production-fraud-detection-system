@@ -175,6 +175,12 @@ class FraudPredictor:
         - days_since_card_first_seen → custom Redis
         """
         df = compute_time_features(df)
+
+        # drop stateful columns that compute_time_features gets wrong on 1 row.
+        # Redis will inject the correct values for these in predict_single().
+        _stateful_time_cols = ["time_since_last_txn_card1", "days_since_card_first_seen"]
+        df = df.drop(columns=[c for c in _stateful_time_cols if c in df.columns])
+
         df = apply_target_encoder(df, self.encodings)
         return df
 

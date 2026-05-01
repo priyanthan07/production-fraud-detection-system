@@ -233,7 +233,9 @@ def main():
         logger.info(f"Training {model_name}")
         logger.info(f"{'=' * 50}")
 
-        with mlflow.start_run(run_name=model_name):
+        with mlflow.start_run(run_name=model_name) as run:
+            run_id = run.info.run_id
+
             model, metrics, threshold = train_and_evaluate_model(
                 model_name,
                 X_train,
@@ -263,7 +265,6 @@ def main():
                 model,
                 artifact_path=model_name,
                 signature=signature,
-                registered_model_name=config["mlflow_model_name"],
             )
 
             # SHAP — runs inside the same MLflow run so plots and
@@ -293,6 +294,7 @@ def main():
                 "model": model,
                 "metrics": metrics,
                 "threshold": threshold,
+                "run_id": run_id,
                 "shap_artifacts": shap_artifacts,
             }
 
@@ -303,7 +305,18 @@ def main():
     # Find best model by AUC-PR
     best_model_name = max(results, key=lambda name: results[name]["metrics"]["auc_pr"])
 
+    best_run_id = results[best_model_name]["run_id"]
+
+    mlflow.register_model(
+        model_uri=f"runs:/{best_run_id}/{best_model_name}",
+        name=config["mlflow_model_name"],
+    )
+
     best_metrics = results[best_model_name]["metrics"]
+    logger.info(f"Best model registered as '{config['mlflow_model_name']}'.")
+    logger.info(
+        "Run 'make promote' or 'python -m src.registry.model_manager' to promote to Production."
+    )
 
     best_shap = results[best_model_name].get("shap_artifacts", {})
     importance_df = best_shap.get("importance_df")
