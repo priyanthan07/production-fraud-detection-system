@@ -25,12 +25,12 @@ def build_catboost_model(
     logger.info(f"Class distribution: {n_negative} legitimate, {n_positive} fraud")
 
     default_params = {
-        "iterations": 500,
-        "depth": 6,
-        "learning_rate": 0.05,
+        "iterations": 1000,
+        "depth": 8,
+        "learning_rate": 0.03,
         "subsample": 0.8,
         "colsample_bylevel": 0.8,
-        "min_data_in_leaf": 20,
+        "min_data_in_leaf": 5,
         "auto_class_weights": "Balanced",
         "random_seed": 42,
         "eval_metric": "AUC",

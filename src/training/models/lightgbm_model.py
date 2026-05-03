@@ -28,13 +28,13 @@ def build_lightgbm_model(
     logger.info(f"Class distribution: {n_negative} legitimate, {n_positive} fraud")
 
     default_params = {
-        "n_estimators": 500,
+        "n_estimators": 1000,
         "max_depth": 6,
         "learning_rate": 0.05,
         "num_leaves": 63,
         "subsample": 0.8,
         "colsample_bytree": 0.8,
-        "min_child_samples": 20,
+        "min_child_samples": 5,
         "is_unbalance": True,
         "random_state": 42,
         "n_jobs": -1,
@@ -68,7 +68,7 @@ def train_lightgbm(
 
     try:
         callbacks = [
-            early_stopping(stopping_rounds=50, verbose=True),
+            early_stopping(stopping_rounds=100, verbose=True),
             log_evaluation(period=100),
         ]
     except ImportError:
