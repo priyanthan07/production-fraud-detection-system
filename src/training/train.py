@@ -178,7 +178,8 @@ def train_and_evaluate_model(
     optimal_threshold = find_optimal_threshold(
         y_val.values,
         y_pred_proba,
-        strategy="f1",
+        strategy="recall_constrained",
+        min_recall=0.60,
     )
 
     metrics = evaluate_model(

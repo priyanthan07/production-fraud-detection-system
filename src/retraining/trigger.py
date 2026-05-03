@@ -71,6 +71,7 @@ def run_training_pipeline() -> dict:
             capture_output=True,
             text=True,
             timeout=7200,  # 2 hour timeout for training
+            cwd=str(Path(__file__).resolve().parents[2]),
         )
 
         if result.returncode == 0:
