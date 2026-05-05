@@ -79,7 +79,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      MLFLOW_TRACKING_URI: "postgresql://postgres:admin@postgres:5432/mlflow_tracking"
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
     restart: unless-stopped
@@ -158,7 +158,7 @@ services:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "true"
-      MLFLOW_TRACKING_URI: "postgresql://postgres:admin@postgres:5432/mlflow_tracking"
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
       PROJECT_ROOT: "/opt/airflow/project"
     volumes:
       - ./airflow/dags:/opt/airflow/dags:ro
@@ -182,7 +182,7 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: "postgresql+psycopg2://postgres:admin@postgres:5432/airflow"
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-      MLFLOW_TRACKING_URI: "postgresql://postgres:admin@postgres:5432/mlflow_tracking"
+      MLFLOW_TRACKING_URI: "http://mlflow:5000"
       PROJECT_ROOT: "/opt/airflow/project"
     volumes:
       - ./airflow/dags:/opt/airflow/dags:ro

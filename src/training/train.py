@@ -1,4 +1,7 @@
+import argparse
+import json
 import logging
+import os
 import pickle
 import warnings
 from pathlib import Path
@@ -18,6 +21,7 @@ from src.training.models.catboost_model import train_catboost
 from src.training.models.lightgbm_model import train_lightgbm
 from src.training.models.xgboost_model import train_xgboost
 from src.training.threshold_optimizer import find_optimal_threshold
+from src.training.tuning import tune_catboost, tune_lightgbm, tune_xgboost
 
 # Suppress MLflow schema warnings about integer columns
 warnings.filterwarnings("ignore", message="Hint: Inferred schema contains integer column")
@@ -191,12 +195,17 @@ def train_and_evaluate_model(
     return model, metrics, optimal_threshold
 
 
-def main():
+def main(run_tuning: bool = False, n_trials: int = 30, params_file: str = None):
 
     config = load_config()
 
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI") or config.get(
+        "mlflow_tracking_uri", "http://localhost:5000"
+    )
+
     # Use local PostgreSQL for MLflow tracking and model registry
-    mlflow.set_tracking_uri(config["mlflow_tracking_uri"])
+    mlflow.set_tracking_uri(tracking_uri)
+    logger.info(f"MLflow tracking URI: {tracking_uri}")
 
     mlflow.set_experiment(config["mlflow_experiment_name"])
 
@@ -228,29 +237,81 @@ def main():
         f.write("\n".join(feature_cols))
 
     results = {}
+    tuned_params = {}
+
+    # Tuning phase (optional)
+
+    if params_file is not None:
+        # Load pre-tuned params from file — skip tuning entirely
+        params_path = Path(params_file)
+        if not params_path.exists():
+            raise FileNotFoundError(
+                f"Params file not found: {params_file}. Run with --tune first to generate it."
+            )
+        with open(params_path) as f:
+            tuned_params = json.load(f)
+        logger.info(f"Loaded pre-tuned params from {params_file}")
+        for model_name, params in tuned_params.items():
+            logger.info(f"  {model_name}: {params}")
+
+    if run_tuning:
+        logger.info(f"Running hyperparameter tuning ({n_trials} trials per model)...")
+
+        tuners = {
+            "xgboost": tune_xgboost,
+            "lightgbm": tune_lightgbm,
+            "catboost": tune_catboost,
+        }
+
+        for model_name in model_names:
+            logger.info(f"Tuning {model_name}...")
+            best_params = tuners[model_name](
+                X_train,
+                y_train,
+                X_val,
+                y_val,
+                n_trials=n_trials,
+            )
+            tuned_params[model_name] = best_params
+            logger.info(f"{model_name} best params: {best_params}")
+
+        # Save tuned params to disk so you can inspect them
+        tuned_params_path = "data/processed/tuned_params.json"
+        with open(tuned_params_path, "w") as f:
+            json.dump(tuned_params, f, indent=2)
+        logger.info(f"Tuned params saved to {tuned_params_path}")
+
+    else:
+        logger.info("Skipping hyperparameter tuning. Using default parameters.")
+        logger.info("Run with --tune to enable tuning.")
 
     for model_name in model_names:
         logger.info(f"\n{'=' * 50}")
         logger.info(f"Training {model_name}")
         logger.info(f"{'=' * 50}")
 
+        params = tuned_params.get(model_name, None)
+
         with mlflow.start_run(run_name=model_name) as run:
             run_id = run.info.run_id
 
             model, metrics, threshold = train_and_evaluate_model(
-                model_name,
-                X_train,
-                y_train,
-                X_val,
-                y_val,
+                model_name, X_train, y_train, X_val, y_val, params=params
             )
 
             # Log parameters
             mlflow.log_param("model_type", model_name)
+            mlflow.log_param("tuning_enabled", run_tuning)
+            mlflow.log_param("n_tuning_trials", n_trials if run_tuning else 0)
             mlflow.log_param("train_size", len(X_train))
             mlflow.log_param("val_size", len(X_val))
             mlflow.log_param("n_features", len(feature_cols))
             mlflow.log_param("optimal_threshold", threshold)
+
+            # Log the actual params used (tuned or default)
+            if params:
+                for k, v in params.items():
+                    mlflow.log_param(f"tuned_{k}", v)
 
             # Log metrics
             mlflow.log_metrics(metrics)
@@ -305,15 +366,14 @@ def main():
 
     # Find best model by AUC-PR
     best_model_name = max(results, key=lambda name: results[name]["metrics"]["auc_pr"])
-
     best_run_id = results[best_model_name]["run_id"]
+    best_metrics = results[best_model_name]["metrics"]
 
     mlflow.register_model(
         model_uri=f"runs:/{best_run_id}/{best_model_name}",
         name=config["mlflow_model_name"],
     )
 
-    best_metrics = results[best_model_name]["metrics"]
     logger.info(f"Best model registered as '{config['mlflow_model_name']}'.")
     logger.info(
         "Run 'make promote' or 'python -m src.registry.model_manager' to promote to Production."
@@ -338,4 +398,27 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Train fraud detection models")
+    parser.add_argument(
+        "--tune",
+        action="store_true",
+        help="Run Optuna hyperparameter tuning before training. Takes 1-3 hours extra.",
+    )
+    parser.add_argument(
+        "--n-trials",
+        type=int,
+        default=30,
+        help="Number of Optuna trials per model (default: 30). More trials = better params but slower.",
+    )
+    parser.add_argument(
+        "--params-file",
+        type=str,
+        default=None,
+        help="Path to JSON file with pre-tuned params. Skips tuning entirely.",
+    )
+    args = parser.parse_args()
+    main(
+        run_tuning=args.tune,
+        n_trials=args.n_trials,
+        params_file=args.params_file,
+    )

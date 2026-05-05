@@ -48,7 +48,7 @@ class FraudPredictor:
         else:
             self.config = {}
 
-        tracking_uri = self.config.get(
+        tracking_uri = os.environ.get("MLFLOW_TRACKING_URI") or self.config.get(
             "mlflow_tracking_uri",
             "postgresql://postgres:admin@localhost:5432/mlflow_tracking",
         )

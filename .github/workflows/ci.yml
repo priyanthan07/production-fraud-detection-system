@@ -7,6 +7,11 @@ on:
     branches: [main]
 
 jobs:
+  # ============================================================
+  # Job 1 — Lint
+  # Runs on every push and PR
+  # Fast — no dependencies to install beyond ruff
+  # ============================================================
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -17,18 +22,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dependencies
-        run: |
-          pip install ruff
+      - name: Install ruff
+        run: pip install ruff
 
       - name: Run ruff linter
-        run: |
-          ruff check src/ tests/ --output-format github
+        run: ruff check src/ tests/ --output-format github
 
       - name: Run ruff formatter check
-        run: |
-          ruff format src/ tests/ --check
+        run: ruff format src/ tests/ --check
 
+  # ============================================================
+  # Job 2 — Unit and Integration Tests
+  # Runs on every push and PR
+  # No Docker needed — all external dependencies are mocked
+  # ============================================================
   test:
     runs-on: ubuntu-latest
     needs: lint
@@ -41,8 +48,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install uv
-        run: |
-          pip install uv
+        run: pip install uv
 
       - name: Install project dependencies
         run: |
@@ -50,17 +56,109 @@ jobs:
           uv pip install --system pytest httpx || pip install pytest httpx
 
       - name: Run unit tests
-        run: |
-          pytest tests/unit/ -v --tb=short
+        run: pytest tests/unit/ -v --tb=short
 
       - name: Run integration tests
-        run: |
-          pytest tests/integration/ -v --tb=short
+        run: pytest tests/integration/ -v --tb=short
 
+  # ============================================================
+  # Job 3 — Docker Stack Test
+  # Runs only on push to main (not PRs — too slow for PR feedback)
+  # Builds all images and verifies the full stack starts correctly
+  # Tests infrastructure wiring without any model training
+  # ============================================================
+  docker-stack-test:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv and project dependencies
+        run: |
+          pip install uv
+          uv pip install --system -e "." || pip install -e "."
+          uv pip install --system pytest httpx requests psycopg2-binary redis \
+            || pip install pytest httpx requests psycopg2-binary redis
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create required local directories
+        # Inference container mounts these — must exist before compose up
+        run: |
+          mkdir -p data/processed
+          mkdir -p data/production
+
+      - name: Build and start Docker stack
+        run: |
+          docker compose up -d --build
+          echo "Stack started. Waiting for health checks..."
+
+      - name: Wait for core services to be healthy
+        run: |
+          echo "Waiting for PostgreSQL..."
+          docker compose exec -T postgres \
+            sh -c 'until pg_isready -U postgres; do sleep 2; done'
+
+          echo "Waiting for Redis..."
+          docker compose exec -T redis \
+            sh -c 'until redis-cli ping | grep -q PONG; do sleep 2; done'
+
+          echo "Waiting for MLflow..."
+          curl --retry 15 --retry-delay 5 --retry-connrefused \
+            --retry-all-errors --silent \
+            http://localhost:5000/health
+
+          echo "Waiting for inference server..."
+          curl --retry 20 --retry-delay 5 --retry-connrefused \
+            --retry-all-errors --silent \
+            http://localhost:8000/health
+
+          echo "All core services healthy."
+
+      - name: Show running containers
+        run: docker compose ps
+
+      - name: Run Docker stack tests
+        run: |
+          pytest tests/integration/test_docker_stack.py -v --tb=short
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "====== inference logs ======"
+          docker compose logs --tail=100 inference
+          echo "====== mlflow logs ======"
+          docker compose logs --tail=50 mlflow
+          echo "====== postgres logs ======"
+          docker compose logs --tail=30 postgres
+          echo "====== redis logs ======"
+          docker compose logs --tail=30 redis
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v
+
+  # ============================================================
+  # Job 4 — Build verification
+  # Runs only on push to main
+  # Verifies all Dockerfiles build cleanly
+  # Runs in parallel with docker-stack-test (both need test to pass)
+  # Note: docker-stack-test also builds images via compose up --build
+  # This job explicitly verifies each Dockerfile builds independently
+  # ============================================================
   build:
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
     steps:
       - uses: actions/checkout@v4
 
@@ -91,6 +189,6 @@ jobs:
             -t fraud-airflow:latest \
             .
 
-      - name: Verify images built
-        run: |
-          docker images | grep fraud
+      - name: Verify all images built
+        run: docker images | grep fraud
+        

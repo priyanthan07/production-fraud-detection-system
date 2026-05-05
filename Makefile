@@ -60,6 +60,12 @@ lint-fix:
 train:
 	python -m src.training.train
 
+train-tuned:
+	python -m src.training.train --tune --n-trials 10
+
+train-with-params:
+	python -m src.training.train --params-file data/processed/tuned_params.json
+
 promote:
 	python -m src.registry.model_manager
 
