@@ -59,7 +59,7 @@ jobs:
         run: pytest tests/unit/ -v --tb=short
 
       - name: Run integration tests
-        run: pytest tests/integration/ -v --tb=short
+        run: pytest tests/integration/ -v --tb=short --ignore=tests/integration/test_docker_stack.py
 
   # ============================================================
   # Job 3 — Docker Stack Test
@@ -191,4 +191,3 @@ jobs:
 
       - name: Verify all images built
         run: docker images | grep fraud
-        
