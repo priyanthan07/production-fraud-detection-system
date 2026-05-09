@@ -10,6 +10,7 @@ import mlflow
 import mlflow.sklearn
 import pandas as pd
 import yaml
+from dotenv import load_dotenv
 from mlflow.models import infer_signature
 
 from src.explainability.shap_analysis import run_shap_analysis
@@ -34,6 +35,8 @@ logging.getLogger("mlflow.models.model").setLevel(logging.ERROR)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 
 def load_config() -> dict:

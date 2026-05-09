@@ -1,17 +1,21 @@
 import logging
+import os
 import sys
 from pathlib import Path
 
 import mlflow
 import yaml
+from dotenv import load_dotenv
 from mlflow.tracking import MlflowClient
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 QUALITY_GATES = {
     "auc_roc": 0.85,
     "auc_pr": 0.40,
-    "recall": 0.30,
+    "recall": 0.60,
     "precision": 0.30,
 }
 
@@ -30,12 +34,11 @@ def get_client() -> MlflowClient:
         with open(config_path) as f:
             config = yaml.safe_load(f)
 
-        tracking_uri = config.get(
-            "mlflow_tracking_uri",
-            "postgresql://postgres:admin@localhost:5432/mlflow_tracking",
+        tracking_uri = os.environ.get("MLFLOW_TRACKING_URI") or config.get(
+            "mlflow_tracking_uri", "http://localhost:5000"
         )
     else:
-        tracking_uri = "postgresql://postgres:admin@localhost:5432/mlflow_tracking"
+        tracking_uri = "http://localhost:5000"
 
     mlflow.set_tracking_uri(tracking_uri)
     return MlflowClient()

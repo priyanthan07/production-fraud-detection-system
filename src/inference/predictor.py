@@ -51,7 +51,7 @@ class FraudPredictor:
 
         tracking_uri = os.environ.get("MLFLOW_TRACKING_URI") or self.config.get(
             "mlflow_tracking_uri",
-            "postgresql://postgres:admin@localhost:5432/mlflow_tracking",
+            "http://mlflow:5000",
         )
 
         mlflow.set_tracking_uri(tracking_uri)
