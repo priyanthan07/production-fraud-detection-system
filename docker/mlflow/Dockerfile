@@ -24,4 +24,18 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')" || exit 1
 
-CMD ["mlflow", "server", "--backend-store-uri", "postgresql://postgres:admin@postgres:5432/mlflow_tracking", "--default-artifact-root", "/mlflow/artifacts", "--host", "0.0.0.0", "--port", "5000"]
+# --serve-artifacts   → MLflow proxies artifact uploads/downloads through the
+#                       HTTP server instead of returning raw filesystem paths.
+#                       Without this flag, clients receive file:///mlflow/artifacts/...
+#                       URIs and try to write directly to that path on their own disk,
+#                       which fails in CI (no /mlflow directory on the runner) and
+#                       breaks the inference container (path not accessible).
+#
+# --artifacts-destination → Where the server stores artifact files.
+#                           Must match the Docker volume mount point.
+CMD ["mlflow", "server", \
+    "--backend-store-uri", "postgresql://postgres:admin@postgres:5432/mlflow_tracking", \
+    "--artifacts-destination", "/mlflow/artifacts", \
+    "--serve-artifacts", \
+    "--host", "0.0.0.0", \
+    "--port", "5000"]

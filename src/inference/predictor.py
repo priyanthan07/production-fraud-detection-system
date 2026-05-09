@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import time
 from pathlib import Path
 
 import mlflow
@@ -99,17 +100,30 @@ class FraudPredictor:
         feature_store.host = redis_host
         feature_store.port = redis_port
 
-        try:
-            feature_store.connect()
-            self._redis_ok = True
-            logger.info("Custom Redis feature store (velocity/aggregations) connected.")
-        except Exception as e:
-            self._redis_ok = False
-            logger.error(
-                f"Custom Redis connection failed: {e}. "
-                f"Velocity and aggregation features will be 0/NaN. "
-                f"Run: python scripts/bootstrap_redis.py"
-            )
+        # Retry Redis connection — Redis may still be initialising even after
+        # Docker's service_healthy condition passes, especially under CI load.
+        max_retries = 5
+        retry_delay = 2
+        for attempt in range(max_retries):
+            try:
+                feature_store.connect()
+                self._redis_ok = True
+                logger.info("Custom Redis feature store (velocity/aggregations) connected.")
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        f"Redis connection attempt {attempt + 1}/{max_retries} failed: {e}. "
+                        f"Retrying in {retry_delay}s..."
+                    )
+                    time.sleep(retry_delay)
+                else:
+                    self._redis_ok = False
+                    logger.error(
+                        f"Redis connection failed after {max_retries} attempts: {e}. "
+                        f"Velocity and aggregation features will be 0/NaN. "
+                        f"Run: python scripts/bootstrap_redis.py"
+                    )
 
         self._loaded = True
         logger.info(

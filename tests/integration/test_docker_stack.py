@@ -147,20 +147,31 @@ class TestMLflow:
         assert r.status_code == 200
 
     def test_mlflow_experiments_api_responds(self):
-        r = requests.get(
-            f"{MLFLOW_URL}/api/2.0/mlflow/experiments/list",
-            timeout=10,
-        )
-        assert r.status_code == 200
-        data = r.json()
-        assert "experiments" in data
+        """
+        Use the MLflow client instead of raw HTTP so we are not
+        tied to a specific API path that may change across versions.
+        The /api/2.0/mlflow/experiments/list endpoint was removed
+        in newer MLflow versions in favour of search_experiments().
+        """
+        import mlflow
+
+        mlflow.set_tracking_uri(MLFLOW_URL)
+        client = mlflow.tracking.MlflowClient()
+        experiments = client.search_experiments()
+        assert isinstance(experiments, list)
 
     def test_mlflow_model_registry_api_responds(self):
-        r = requests.get(
-            f"{MLFLOW_URL}/api/2.0/mlflow/registered-models/list",
-            timeout=10,
-        )
-        assert r.status_code == 200
+        """
+        Use the MLflow client for the same reason as above.
+        /api/2.0/mlflow/registered-models/list is not available
+        in all MLflow versions — search_registered_models() is stable.
+        """
+        import mlflow
+
+        mlflow.set_tracking_uri(MLFLOW_URL)
+        client = mlflow.tracking.MlflowClient()
+        models = client.search_registered_models()
+        assert isinstance(models, list)
 
     def test_mlflow_can_create_experiment(self):
         import mlflow
@@ -215,10 +226,30 @@ class TestInference:
         assert "redis_healthy" in data
 
     def test_inference_redis_connection_healthy(self):
-        """Inference server should connect to Redis successfully."""
+        """
+        Inference server should connect to Redis successfully.
+
+        There is a race at startup: the inference container may attempt
+        its Redis connection before Redis is fully ready, even with
+        depends_on: condition: service_healthy. We retry for up to 30s
+        to handle this without flaking.
+        """
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            r = requests.get(f"{INFERENCE_URL}/health", timeout=10)
+            data = r.json()
+            if data["redis_healthy"]:
+                return
+            time.sleep(3)
+
+        # Final check — fail with a clear message if still not healthy
         r = requests.get(f"{INFERENCE_URL}/health", timeout=10)
         data = r.json()
-        assert data["redis_healthy"] is True
+        assert data["redis_healthy"] is True, (
+            "Inference server Redis connection is not healthy after 30s. "
+            "Check that REDIS_HOST=redis is set in docker-compose.yml for the inference service "
+            "and that the inference container starts after Redis is healthy."
+        )
 
     def test_inference_metrics_endpoint_responds(self):
         """Prometheus metrics endpoint must be accessible."""
@@ -394,6 +425,11 @@ class TestServiceConnectivity:
         assert data["status"] == "success"
 
 
+# ================================================================
+# MLflow Artifact Storage
+# ================================================================
+
+
 class TestMLflowArtifactStorage:
     def test_artifact_stored_in_docker_volume_not_local_disk(self):
         """
@@ -403,45 +439,45 @@ class TestMLflowArtifactStorage:
         (the MLflow server), artifact files land in the Docker volume
         and NOT on the local disk.
 
+        The MLflow server must be started with --serve-artifacts for
+        this to work. Without that flag, MLflow returns file:// URIs
+        and clients try to write directly to /mlflow/artifacts on their
+        own disk — which fails in CI and breaks the inference container.
+
         If this test passes, the inference container can load models.
-        If this test fails, artifacts are going to the wrong place.
+        If this test fails, add --serve-artifacts to the MLflow CMD.
         """
         import os
         import tempfile
 
         import mlflow
 
-        # Connect through MLflow SERVER (http) not directly to postgres
         mlflow.set_tracking_uri(MLFLOW_URL)
         mlflow.set_experiment("ci_artifact_test")
 
-        # Create a dummy artifact file
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact_path = os.path.join(tmpdir, "test_model.txt")
             with open(artifact_path, "w") as f:
                 f.write("this is a test artifact simulating a model file")
 
-            # Log through MLflow server
             with mlflow.start_run(run_name="artifact_storage_test") as run:
                 run_id = run.info.run_id
                 mlflow.log_artifact(artifact_path, artifact_path="test_artifacts")
                 mlflow.log_param("artifact_test", "true")
 
-        # Verify artifact URI points to MLflow server storage
-        # NOT to a local file:// path
         client = mlflow.tracking.MlflowClient(tracking_uri=MLFLOW_URL)
         run_info = client.get_run(run_id)
         artifact_uri = run_info.info.artifact_uri
 
         assert not artifact_uri.startswith("file://"), (
-            f"Artifact URI starts with file:// — artifacts are going to LOCAL DISK not Docker volume.\n"
+            f"Artifact URI starts with file:// — MLflow is NOT serving artifacts via HTTP.\n"
             f"Artifact URI: {artifact_uri}\n"
-            f"Fix: set MLFLOW_TRACKING_URI=http://localhost:5000 when training."
+            f"Fix: add --serve-artifacts to the mlflow server CMD in docker/mlflow/Dockerfile."
         )
         assert "mlflow-artifacts" in artifact_uri or artifact_uri.startswith("http"), (
             f"Artifact URI does not point to MLflow server storage.\n"
             f"Artifact URI: {artifact_uri}\n"
-            f"Expected URI containing 'mlflow-artifacts' or 'http'."
+            f"Expected URI containing 'mlflow-artifacts' or starting with 'http'."
         )
 
     def test_artifact_can_be_downloaded_back(self):
@@ -449,8 +485,8 @@ class TestMLflowArtifactStorage:
         Verifies the complete round trip:
         upload artifact → store in Docker volume → download back.
 
-        If download works, inference container can also load it
-        from the same Docker volume.
+        If download works, the inference container can also load models
+        from the same Docker volume via the MLflow server.
         """
         import os
         import tempfile
@@ -462,7 +498,6 @@ class TestMLflowArtifactStorage:
 
         test_content = "mock_model_weights_12345"
 
-        # Upload
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact_file = os.path.join(tmpdir, "mock_model.pkl")
             with open(artifact_file, "w") as f:
@@ -472,7 +507,6 @@ class TestMLflowArtifactStorage:
                 run_id = run.info.run_id
                 mlflow.log_artifact(artifact_file, artifact_path="model")
 
-        # Download back through MLflow server
         client = mlflow.tracking.MlflowClient(tracking_uri=MLFLOW_URL)
 
         with tempfile.TemporaryDirectory() as download_dir:
@@ -481,7 +515,6 @@ class TestMLflowArtifactStorage:
                 "model/mock_model.pkl",
                 dst_path=download_dir,
             )
-
             with open(downloaded) as f:
                 content = f.read()
 
@@ -497,7 +530,8 @@ class TestMLflowArtifactStorage:
         and NOT postgresql:// directly.
 
         When using postgresql:// directly, artifacts go to local disk.
-        When using http://localhost:5000, artifacts go to Docker volume.
+        When using http://localhost:5000, artifacts go through the
+        MLflow server into the Docker volume.
         """
         from pathlib import Path
 
@@ -516,7 +550,6 @@ class TestMLflowArtifactStorage:
             f"This causes artifacts to go to local disk instead of Docker volume.\n"
             f"Fix: change mlflow_tracking_uri to http://localhost:5000"
         )
-
         assert tracking_uri.startswith("http://") or tracking_uri.startswith("https://"), (
             f"mlflow_tracking_uri should be http://localhost:5000, got: {tracking_uri}"
         )
@@ -526,10 +559,10 @@ class TestMLflowArtifactStorage:
         Verifies the inference container can actually reach
         the mlflow_artifacts Docker volume.
 
-        If a model exists in Production, inference should load it.
-        If no model exists, inference should return 503 (not 500 or error).
-        Both outcomes are acceptable — we just verify the container
-        is connected to the right storage.
+        If a model exists in Production, inference should load it (200).
+        If no model exists, inference should return 503 gracefully.
+        Both are acceptable — we just verify there is no 500 crash,
+        which would indicate a broken artifact storage path.
         """
         r = requests.get(f"{INFERENCE_URL}/health", timeout=10)
         assert r.status_code == 200
@@ -537,12 +570,9 @@ class TestMLflowArtifactStorage:
         data = r.json()
 
         if data["model_loaded"]:
-            # Model loaded from Docker volume successfully
             assert data["model_version"] != "none"
             assert data["threshold"] > 0
         else:
-            # No model in Production registry — acceptable
-            # Verify it returns 503 (graceful degradation) not 500 (crash)
             txn = {
                 "TransactionID": 9999999,
                 "TransactionDT": 86400,
@@ -551,5 +581,5 @@ class TestMLflowArtifactStorage:
             r = requests.post(f"{INFERENCE_URL}/predict", json=txn, timeout=10)
             assert r.status_code == 503, (
                 f"Expected 503 (model not loaded) but got {r.status_code}.\n"
-                f"This may indicate inference crashed trying to access artifacts."
+                f"A 500 here may indicate inference crashed trying to access artifacts."
             )
