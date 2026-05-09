@@ -188,22 +188,28 @@ class TestMLflow:
         client.delete_experiment(experiment_id)
 
     def test_mlflow_can_log_run(self):
-        """Verify the full run logging pipeline works end to end."""
+        import uuid
+
         import mlflow
 
+        # Use a unique name so this test never collides with
+        # test_mlflow_can_create_experiment which deletes "ci_test_experiment"
+        experiment_name = f"ci_log_run_test_{uuid.uuid4().hex[:8]}"
         mlflow.set_tracking_uri(MLFLOW_URL)
-        mlflow.set_experiment("ci_test_experiment")
+        mlflow.set_experiment(experiment_name)
 
         with mlflow.start_run(run_name="ci_health_check") as run:
             mlflow.log_param("test_param", "ci_value")
             mlflow.log_metric("test_metric", 0.95)
             run_id = run.info.run_id
 
-        # Verify it was actually saved
         client = mlflow.tracking.MlflowClient()
         fetched_run = client.get_run(run_id)
         assert fetched_run.data.params["test_param"] == "ci_value"
         assert fetched_run.data.metrics["test_metric"] == 0.95
+
+        # Clean up
+        client.delete_experiment(mlflow.get_experiment_by_name(experiment_name).experiment_id)
 
 
 # ================================================================

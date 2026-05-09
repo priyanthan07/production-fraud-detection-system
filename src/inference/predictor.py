@@ -56,6 +56,9 @@ class FraudPredictor:
 
         mlflow.set_tracking_uri(tracking_uri)
 
+        # Connect Redis first — must succeed regardless of model availability
+        self._connect_redis()
+
         # Load model from MLflow
         if model_uri is None:
             model_uri = f"models:/{MODEL_NAME}/Production"
@@ -94,22 +97,31 @@ class FraudPredictor:
         except Exception as e:
             logger.info(f"Could not load from MLflow artifacts: {e}.")
 
-        # Connect to custom Redis feature store (velocity + aggregations)
+        self._loaded = True
+        logger.info(
+            f"FraudPredictor ready. "
+            f"Model: {self.model_version}, "
+            f"Threshold: {self.threshold:.4f}, "
+            f"Redis: {'OK' if self._redis_ok else 'UNAVAILABLE'}"
+        )
+
+    def _connect_redis(self) -> None:
+        """
+        Connect to Redis with retries. Always called, even if model load fails.
+        """
         redis_host = os.environ.get("REDIS_HOST") or self.config.get("redis_host", "localhost")
         redis_port = int(os.environ.get("REDIS_PORT") or self.config.get("redis_port", 6379))
         feature_store.host = redis_host
         feature_store.port = redis_port
 
-        # Retry Redis connection — Redis may still be initialising even after
-        # Docker's service_healthy condition passes, especially under CI load.
         max_retries = 5
         retry_delay = 2
         for attempt in range(max_retries):
             try:
                 feature_store.connect()
                 self._redis_ok = True
-                logger.info("Custom Redis feature store (velocity/aggregations) connected.")
-                break
+                logger.info("Redis feature store connected.")
+                return
             except Exception as e:
                 if attempt < max_retries - 1:
                     logger.warning(
@@ -119,19 +131,7 @@ class FraudPredictor:
                     time.sleep(retry_delay)
                 else:
                     self._redis_ok = False
-                    logger.error(
-                        f"Redis connection failed after {max_retries} attempts: {e}. "
-                        f"Velocity and aggregation features will be 0/NaN. "
-                        f"Run: python scripts/bootstrap_redis.py"
-                    )
-
-        self._loaded = True
-        logger.info(
-            f"FraudPredictor ready. "
-            f"Model: {self.model_version}, "
-            f"Threshold: {self.threshold:.4f}, "
-            f"Redis: {'OK' if self._redis_ok else 'UNAVAILABLE'}"
-        )
+                    logger.error(f"Redis connection failed after {max_retries} attempts: {e}.")
 
     def _load_version_and_threshold(self, model_uri: str) -> str:
         """

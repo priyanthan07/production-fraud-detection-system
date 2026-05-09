@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
     """Runs on server startup and shutdown."""
 
     logger.info("Starting fraud detection inference server...")
+
     try:
         predictor.load()
         set_model_version(str(predictor.model_version))
