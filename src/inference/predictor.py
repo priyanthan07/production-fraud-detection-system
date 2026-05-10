@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import tempfile
 import time
 from pathlib import Path
 
@@ -9,7 +10,6 @@ import mlflow.sklearn
 import numpy as np
 import pandas as pd
 import yaml
-from dotenv import load_dotenv
 from mlflow.tracking import MlflowClient
 
 from src.feature_store.online_store import feature_store
@@ -18,7 +18,6 @@ from src.features.time_features import compute_time_features
 from src.inference.schemas import PredictionOutput, TransactionInput, compute_risk_level
 
 logger = logging.getLogger(__name__)
-load_dotenv()
 
 CONFIG_PATH = Path("configs/model_config.yaml")
 MODEL_NAME = "fraud_detection_model"
@@ -27,7 +26,7 @@ MODEL_NAME = "fraud_detection_model"
 class FraudPredictor:
     def __init__(self):
         self.model = None
-        self.encoding = None
+        self.encodings = {}
         self.feature_columns: list = []
         self.threshold = 0.5
         self.model_version = None
@@ -81,7 +80,7 @@ class FraudPredictor:
         try:
             client = MlflowClient()
             artifact_dir = client.download_artifacts(
-                self.run_id, "features", dst_path="/tmp/fraud_artifacts"
+                self.run_id, "features", dst_path=tempfile.mkdtemp()
             )
             artifact_path = Path(artifact_dir)
 
@@ -210,7 +209,7 @@ class FraudPredictor:
             )
             missing_df = pd.DataFrame(np.nan, index=df.index, columns=missing)
             df = pd.concat([df, missing_df], axis=1)
-        return df[self.feature_columns]
+        return df[self.feature_columns].astype(float)
 
     def predict_single(self, transaction: TransactionInput) -> PredictionOutput:
         """

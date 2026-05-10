@@ -1,11 +1,8 @@
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-
-load_dotenv()
 
 # ----------------------------------------------------------------
 # DAG configuration

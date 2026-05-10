@@ -185,7 +185,11 @@ class TestMLflow:
 
         # Clean up
         client = mlflow.tracking.MlflowClient()
-        client.delete_experiment(experiment_id)
+
+        try:
+            client.delete_experiment(experiment_id)
+        except Exception:
+            pass
 
     def test_mlflow_can_log_run(self):
         import uuid
@@ -209,7 +213,10 @@ class TestMLflow:
         assert fetched_run.data.metrics["test_metric"] == 0.95
 
         # Clean up
-        client.delete_experiment(mlflow.get_experiment_by_name(experiment_name).experiment_id)
+        try:
+            client.delete_experiment(mlflow.get_experiment_by_name(experiment_name).experiment_id)
+        except Exception:
+            pass
 
 
 # ================================================================
